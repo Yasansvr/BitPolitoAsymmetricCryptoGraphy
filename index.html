@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitpolito Cryptography Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%93%8B</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Dynamic SVG Connector Canvas for lines connecting envelope to sender -->
+  <svg id="connector-svg">
+    <path id="connector-path" d="" fill="none" stroke="#001CE0" stroke-width="2.5" stroke-dasharray="6,6" stroke-linecap="round" />
+    <circle id="connector-start-dot" cx="0" cy="0" r="5" fill="#001CE0" style="display:none;" />
+    <circle id="connector-end-dot" cx="0" cy="0" r="5" fill="#001CE0" style="display:none;" />
+  </svg>
+
+  <!-- Top App Navigation -->
+  <header class="app-header">
+    <div class="logo-area">
+      <div class="pill-badge">
+        <span class="dot"></span>
+        <span>Bitpolito secp256k1</span>
+      </div>
+      <div class="header-title-group">
+        <h1>Bitpolito Cryptography Simulator</h1>
+        <p>Interactive Public Key Encryption & Elliptic Curve Mathematics</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Cryptography Guide Toggle Button -->
+      <button class="photo2-pill-btn primary" id="nav-guide-btn" onclick="toggleGuideView()">
+        <span>Cryptography Guide</span>
+      </button>
+      <button id="sound-toggle-btn" class="photo2-pill-btn small" onclick="toggleSound()">
+        Sound: ON
+      </button>
+    </div>
+  </header>
+
+  <!-- Equation Banner -->
+  <div class="formula-pill-banner" onclick="switchView('graph')" title="Click to open interactive 2D curve graph">
+    <span class="formula-tag">Bitcoin Curve</span>
+    <span>Elliptic Formula:</span>
+    <span class="formula-math">y² ≡ x³ + 7 (mod p)</span>
+    <span style="color:var(--text-dim); margin:0 4px;">•</span>
+    <span>Public Key:</span>
+    <span class="formula-math">Q = d · G</span>
+  </div>
+
+  <!-- Main View 1: Central Simulator Stage (Alice & Bob) -->
+  <main class="simulator-stage" id="view-simulator">
+    
+    <div class="characters-stage-container">
+
+      <!-- Alice Character Unit (Left) -->
+      <section class="character-unit" id="alice-unit">
+        <!-- Pixel Avatar Frame (Right-clickable) -->
+        <div class="avatar-frame" id="alice-avatar-frame" title="Right-click Alice to send encrypted message">
+          <div class="avatar-halo"></div>
+          <!-- Exact Pixel Art from Image 1: Female hair icon (10x10) -->
+          <svg class="pixel-avatar-svg" viewBox="0 0 10 10" shape-rendering="crispEdges">
+            <!-- Row 0 -->
+            <rect x="3" y="0" width="4" height="1" fill="#001ce0" />
+            <!-- Row 1 -->
+            <rect x="2" y="1" width="4" height="1" fill="#001ce0" />
+            <rect x="7" y="1" width="1" height="1" fill="#001ce0" />
+            <!-- Row 2 -->
+            <rect x="2" y="2" width="3" height="1" fill="#001ce0" />
+            <rect x="6" y="2" width="2" height="1" fill="#001ce0" />
+            <!-- Row 3 -->
+            <rect x="1" y="3" width="3" height="1" fill="#001ce0" />
+            <rect x="7" y="3" width="2" height="1" fill="#001ce0" />
+            <!-- Row 4 -->
+            <rect x="1" y="4" width="2" height="1" fill="#001ce0" />
+            <rect x="7" y="4" width="2" height="1" fill="#001ce0" />
+            <!-- Row 5 -->
+            <rect x="0" y="5" width="3" height="1" fill="#001ce0" />
+            <rect x="7" y="5" width="3" height="1" fill="#001ce0" />
+            <!-- Row 6 -->
+            <rect x="0" y="6" width="4" height="1" fill="#001ce0" />
+            <rect x="6" y="6" width="4" height="1" fill="#001ce0" />
+            <!-- Row 7 -->
+            <rect x="4" y="7" width="2" height="1" fill="#001ce0" />
+            <!-- Row 8 -->
+            <rect x="2" y="8" width="2" height="1" fill="#001ce0" />
+            <rect x="6" y="8" width="2" height="1" fill="#001ce0" />
+            <!-- Row 9 -->
+            <rect x="0" y="9" width="10" height="1" fill="#001ce0" />
+          </svg>
+        </div>
+
+        <!-- Name in Bold Blue matching reference -->
+        <h2 class="character-name">ALICE</h2>
+
+        <!-- Keycard Box with Photo 2 Shadowing and Style -->
+        <div class="character-keycard">
+          <!-- Public Key Field -->
+          <div class="key-group">
+            <div class="key-label-row">
+              <span class="key-label-title">
+                <span>Public Key</span>
+                <span class="key-badge">Q = d · G</span>
+              </span>
+              <span style="font-size:10px; color:var(--text-dim);">secp256k1</span>
+            </div>
+            <div class="key-field-pill">
+              <span class="key-value-text" id="alice-pubkey">Loading...</span>
+              <div class="key-actions-group">
+                <button class="key-btn" onclick="copyText(document.getElementById('alice-pubkey').textContent, 'Alice Public Key')" title="Copy Public Key">
+                  📋
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secret Private Key Field (Asterisk Masked with SVG Reveal Eye) -->
+          <div class="key-group">
+            <div class="key-label-row">
+              <span class="key-label-title">
+                <span>Secret Private Key</span>
+                <span class="key-badge">d ∈ [1, n-1]</span>
+              </span>
+              <span style="font-size:10px; color:var(--text-dim);">256-bit</span>
+            </div>
+            <div class="key-field-pill">
+              <span class="key-value-text masked" id="alice-privkey">••••••••••••••••••••••••••••••••••••••••••••••••</span>
+              <div class="key-actions-group">
+                <!-- Clean SVG Reveal Eye Button -->
+                <button class="key-btn" id="alice-eye-btn" title="Toggle private key visibility">
+                  <svg class="eye-svg" viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+                <button class="key-btn" onclick="copyText(state.alice.privateKeyHex, 'Alice Private Key')" title="Copy Private Key">
+                  📋
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="card-bottom-actions">
+            <button class="photo2-pill-btn primary" onclick="openComposeDialog('ALICE')">
+              <span>Send Encrypted Message</span>
+            </button>
+            <div class="hint-pill">Right-click <b>Alice</b> to open context menu</div>
+          </div>
+        </div>
+
+        <!-- Alice Incoming Messages Container -->
+        <div id="alice-incoming-container" class="incoming-container"></div>
+      </section>
+
+      <!-- Center Interaction Area (NO Popup, NO Blur, 100% Inline!) -->
+      <div class="central-stage-column">
+        
+        <!-- Transmission Wire Track -->
+        <div class="transmission-lane">
+          <div class="wire-line-track"></div>
+          <div class="wire-badge" id="wire-transit-badge">
+            <span>Public Wire: Eavesdropper (Eve) only sees scrambled ciphertext</span>
+          </div>
+        </div>
+
+        <!-- Inline Messaging Stage: Box 1 (Compose) & Box 2 (Encrypted) -->
+        <div id="inline-messaging-stage" class="inline-messaging-stage" style="display: none;">
+          
+          <!-- Box 1: Compose Box (Photo 2 Styling with Dynamic Envelope Badge) -->
+          <div class="photo2-dialog-box" id="compose-box">
+            
+            <!-- Dynamic Message Icon connected to sender via line representing envelope -->
+            <div class="dialog-envelope-badge" id="compose-envelope-badge">
+              <span id="compose-sender-badge">
+                Envelope from <b>ALICE</b>
+              </span>
+            </div>
+
+            <div class="dialog-header">
+              <div class="dialog-title-group">
+                <h3>Compose Encrypted Message</h3>
+                <p>Bitcoin secp256k1 Asymmetric Cryptography</p>
+              </div>
+              <button class="close-btn" onclick="closeComposeDialog()" title="Close">✕</button>
+            </div>
+
+            <div class="compose-parts-container">
+              
+              <!-- Part 1: Plaintext Message Input -->
+              <div class="compose-part-card">
+                <label class="part-label" for="compose-message-input">
+                  <span>Part 1: Plaintext Message</span>
+                </label>
+                <textarea 
+                  id="compose-message-input" 
+                  class="message-textarea" 
+                  placeholder="Type your secret message here..."
+                ></textarea>
+                <div class="quick-chips-row">
+                  <span class="quick-chip" onclick="setQuickMessage('Secret Bitcoin seed: 5 BTC transfer authorized')">Bitcoin Seed</span>
+                  <span class="quick-chip" onclick="setQuickMessage('Meet me at the rendezvous point at 18:00 UTC')">Meetup 18:00 UTC</span>
+                  <span class="quick-chip" onclick="setQuickMessage('Private asymmetric handshake confirmed')">Asymmetric Handshake</span>
+                </div>
+              </div>
+
+              <!-- Part 2: Receiver Public Key Hand Input (Copy-Pasting by Player) -->
+              <div class="compose-part-card">
+                <div class="part-label">
+                  <span>Part 2: Receiver Public Key</span>
+                  <span style="font-size:10px; font-weight:600; text-transform:none; color:var(--text-muted);">Enter by hand (copy-paste)</span>
+                </div>
+                <div class="recipient-input-row">
+                  <input 
+                    type="text" 
+                    id="recipient-pubkey-input" 
+                    class="recipient-input-field" 
+                    placeholder="Paste receiver's public key (hex 02... or 03...)" 
+                    autocomplete="off"
+                    spellcheck="false"
+                  >
+                  <button class="photo2-pill-btn small" onclick="pasteRecipientKey()" title="Paste from clipboard">
+                    📋 Paste
+                  </button>
+                </div>
+                <div id="recipient-key-status" class="recipient-key-status">
+                  Copy the public key from the receiver's card (click 📋) and paste it here
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Lock Button for Encrypting the Message (Photo 2 Pill Style) -->
+            <div class="compose-actions">
+              <button id="lock-encrypt-btn" class="photo2-pill-btn primary" onclick="handleEncryptClick()">
+                <span>Encrypt Message</span>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Box 2: Encrypted Payload Box (Appears after clicking Lock button, Photo 2 Style) -->
+          <div id="encrypted-standalone-box" class="encrypted-standalone-box">
+            
+            <div class="dialog-header">
+              <div class="dialog-title-group">
+                <h3>Encrypted Payload</h3>
+                <p>Ready for public wire transmission</p>
+              </div>
+              <span class="key-badge" style="background:#EBF0FF; color:#001CE0;">AES-256-GCM</span>
+            </div>
+
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                <span>CIPHERTEXT (Hex Payload):</span>
+                <button class="key-btn" onclick="copyText(document.getElementById('encrypted-ciphertext-display').textContent, 'Ciphertext')" title="Copy Ciphertext">📋</button>
+              </div>
+              <div id="encrypted-ciphertext-display" class="cipher-pill-display">
+                <!-- Ciphertext inserted dynamically -->
+              </div>
+            </div>
+
+            <div class="math-proof-banner">
+              <div><b>1. Ephemeral Key R = k · G:</b> <br><span id="encrypted-ephemeral-key" style="font-family:monospace; font-size:11px; word-break:break-all;"></span></div>
+              <div style="margin-top:6px;"><b>2. Shared Secret Point S = k · Q_receiver:</b> <br><span id="encrypted-shared-secret" style="font-family:monospace; font-size:11px; word-break:break-all;"></span></div>
+              <div style="margin-top:8px; font-size:11px; color:var(--text-muted); border-top:1px dashed rgba(0,28,224,0.15); padding-top:6px;">
+                Receiver uses their private key <b>d</b> to compute <b>S = d · R</b> to decrypt!
+              </div>
+            </div>
+
+            <!-- Send Button Requested in Prompt -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+              <button class="photo2-pill-btn small" onclick="closeComposeDialog()">
+                Cancel
+              </button>
+              <button id="send-encrypted-msg-btn" class="photo2-pill-btn primary" onclick="handleSendClick()">
+                <span>Send Message</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Bob Character Unit (Right) -->
+      <section class="character-unit" id="bob-unit">
+        <!-- Pixel Avatar Frame (Right-clickable) -->
+        <div class="avatar-frame" id="bob-avatar-frame" title="Right-click Bob to send encrypted message">
+          <div class="avatar-halo"></div>
+          <!-- Exact Pixel Art from Image 1: Male hair icon (10x10) -->
+          <svg class="pixel-avatar-svg" viewBox="0 0 10 10" shape-rendering="crispEdges">
+            <!-- Row 0 -->
+            <rect x="3" y="0" width="4" height="1" fill="#001ce0" />
+            <!-- Row 1 -->
+            <rect x="2" y="1" width="4" height="1" fill="#001ce0" />
+            <rect x="7" y="1" width="1" height="1" fill="#001ce0" />
+            <!-- Row 2 -->
+            <rect x="2" y="2" width="3" height="1" fill="#001ce0" />
+            <rect x="6" y="2" width="2" height="1" fill="#001ce0" />
+            <!-- Row 3 -->
+            <rect x="2" y="3" width="1" height="1" fill="#001ce0" />
+            <rect x="7" y="3" width="1" height="1" fill="#001ce0" />
+            <!-- Row 4 -->
+            <rect x="1" y="4" width="2" height="1" fill="#001ce0" />
+            <rect x="7" y="4" width="2" height="1" fill="#001ce0" />
+            <!-- Row 5 -->
+            <rect x="2" y="5" width="1" height="1" fill="#001ce0" />
+            <rect x="7" y="5" width="1" height="1" fill="#001ce0" />
+            <!-- Row 6 -->
+            <rect x="3" y="6" width="1" height="1" fill="#001ce0" />
+            <rect x="6" y="6" width="1" height="1" fill="#001ce0" />
+            <!-- Row 7 -->
+            <rect x="4" y="7" width="2" height="1" fill="#001ce0" />
+            <!-- Row 8 -->
+            <rect x="2" y="8" width="2" height="1" fill="#001ce0" />
+            <rect x="6" y="8" width="2" height="1" fill="#001ce0" />
+            <!-- Row 9 -->
+            <rect x="0" y="9" width="10" height="1" fill="#001ce0" />
+          </svg>
+        </div>
+
+        <!-- Name in Bold Blue matching reference -->
+        <h2 class="character-name">BOB</h2>
+
+        <!-- Keycard Box with Photo 2 Shadowing and Style -->
+        <div class="character-keycard">
+          <!-- Public Key Field -->
+          <div class="key-group">
+            <div class="key-label-row">
+              <span class="key-label-title">
+                <span>Public Key</span>
+                <span class="key-badge">Q = d · G</span>
+              </span>
+              <span style="font-size:10px; color:var(--text-dim);">secp256k1</span>
+            </div>
+            <div class="key-field-pill">
+              <span class="key-value-text" id="bob-pubkey">Loading...</span>
+              <div class="key-actions-group">
+                <button class="key-btn" onclick="copyText(document.getElementById('bob-pubkey').textContent, 'Bob Public Key')" title="Copy Public Key">
+                  📋
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secret Private Key Field (Asterisk Masked with SVG Reveal Eye) -->
+          <div class="key-group">
+            <div class="key-label-row">
+              <span class="key-label-title">
+                <span>Secret Private Key</span>
+                <span class="key-badge">d ∈ [1, n-1]</span>
+              </span>
+              <span style="font-size:10px; color:var(--text-dim);">256-bit</span>
+            </div>
+            <div class="key-field-pill">
+              <span class="key-value-text masked" id="bob-privkey">••••••••••••••••••••••••••••••••••••••••••••••••</span>
+              <div class="key-actions-group">
+                <!-- Clean SVG Reveal Eye Button -->
+                <button class="key-btn" id="bob-eye-btn" title="Toggle private key visibility">
+                  <svg class="eye-svg" viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+                <button class="key-btn" onclick="copyText(state.bob.privateKeyHex, 'Bob Private Key')" title="Copy Private Key">
+                  📋
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="card-bottom-actions">
+            <button class="photo2-pill-btn primary" onclick="openComposeDialog('BOB')">
+              <span>Send Encrypted Message</span>
+            </button>
+            <div class="hint-pill">Right-click <b>Bob</b> to open context menu</div>
+          </div>
+        </div>
+
+        <!-- Bob Incoming Messages Container -->
+        <div id="bob-incoming-container" class="incoming-container"></div>
+      </section>
+
+    </div>
+
+    <!-- Communication History Section -->
+    <section class="history-section">
+      <div class="history-header">
+        <h4>Encrypted Transmission Log</h4>
+        <span id="history-count" style="font-size:12px; font-weight:700; color:var(--text-muted);">0 messages</span>
+      </div>
+      <div class="history-list" id="history-list">
+        <div style="text-align:center; padding:20px; color:var(--text-dim); font-size:13px;">
+          No encrypted messages sent yet. Right-click Alice or Bob to begin.
+        </div>
+      </div>
+  </main>
+
+  <!-- Main View 2: Desmos-Style 2D Elliptic Curve Graph Explorer -->
+  <section id="view-graph" class="graph-explorer-stage" style="display: none;">
+    
+    <!-- Top Bar inside Graph View -->
+    <div class="graph-top-bar">
+      <div class="graph-title-group">
+        <button class="photo2-pill-btn small" onclick="switchView('simulator')">
+          ← Back to Simulator
+        </button>
+        <div>
+          <h2>Elliptic Curve 2D Graph (Desmos-Style)</h2>
+          <p>Real-space parameter exploration & Point summation stepper (G + G + G + ...)</p>
+        </div>
+      </div>
+      
+      <!-- Viewport zoom/pan controls -->
+      <div class="graph-viewport-controls">
+        <button class="photo2-pill-btn small" onclick="window.graphEngine?.zoomIn()" title="Zoom In">+</button>
+        <button class="photo2-pill-btn small" onclick="window.graphEngine?.zoomOut()" title="Zoom Out">-</button>
+        <button class="photo2-pill-btn small" onclick="window.graphEngine?.resetView()" title="Reset View">Reset View</button>
+      </div>
+    </div>
+
+    <!-- Main Graph Workspace Layout: Canvas on left, Controls on right -->
+    <div class="graph-workspace-grid">
+      
+      <!-- Canvas Box with Floating Coordinates HUD -->
+      <div class="graph-canvas-wrapper photo2-card">
+        <canvas id="desmos-canvas"></canvas>
+        <div id="graph-cursor-hud" class="graph-cursor-hud">
+          Drag canvas to Pan • Scroll wheel to Zoom
+        </div>
+      </div>
+
+      <!-- Control & Explanation Sidebar -->
+      <div class="graph-sidebar-column">
+        
+        <!-- Card 1: Changeable Variables (a & b) & Modulo Domain Toggle -->
+        <div class="photo2-card graph-sidebar-card">
+          <div class="sidebar-card-header">
+            <h3>Curve Parameters</h3>
+            <span class="formula-badge" id="graph-formula-text">y² = x³ + 7</span>
+          </div>
+
+          <!-- Domain Switcher: Continuous Real Curve (ℝ) vs Finite Field (mod p) -->
+          <div class="graph-domain-tabs">
+            <button id="tab-domain-real" class="domain-tab-btn active" onclick="setGraphDomain('real')">
+              Continuous ℝ
+            </button>
+            <button id="tab-domain-mod" class="domain-tab-btn" onclick="setGraphDomain('mod')">
+              Finite Field (mod p)
+            </button>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <label for="param-a-slider">Parameter a:</label>
+              <span id="param-a-value" class="slider-num">0.0</span>
+            </div>
+            <input type="range" id="param-a-slider" min="-5" max="5" step="0.1" value="0" class="graph-range-slider" oninput="updateParamA(this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <label for="param-b-slider">Parameter b:</label>
+              <span id="param-b-value" class="slider-num">7.0</span>
+            </div>
+            <input type="range" id="param-b-slider" min="-10" max="15" step="0.1" value="7" class="graph-range-slider" oninput="updateParamB(this.value)">
+          </div>
+
+          <!-- Base point xG adjustment (Real mode) -->
+          <div class="slider-group" id="group-param-xg">
+            <div class="slider-label-row">
+              <label for="param-xg-slider">Base Point G (X-coordinate):</label>
+              <span id="param-xg-value" class="slider-num">-1.5</span>
+            </div>
+            <input type="range" id="param-xg-slider" min="-2.5" max="4" step="0.1" value="-1.5" class="graph-range-slider" oninput="updateBasePointX(this.value)">
+          </div>
+
+          <!-- Modulo prime p selector (Mod mode) -->
+          <div class="slider-group" id="group-param-mod" style="display: none;">
+            <div class="slider-label-row">
+              <label>Modulus Prime (p):</label>
+              <span id="param-mod-value" class="slider-num">p = 23</span>
+            </div>
+            <div class="presets-row" style="margin-top: 4px;">
+              <button class="photo2-pill-btn small" id="prime-btn-17" onclick="setPrimeMod(17)">p = 17</button>
+              <button class="photo2-pill-btn small primary" id="prime-btn-23" onclick="setPrimeMod(23)">p = 23</button>
+              <button class="photo2-pill-btn small" id="prime-btn-43" onclick="setPrimeMod(43)">p = 43</button>
+              <button class="photo2-pill-btn small" id="prime-btn-67" onclick="setPrimeMod(67)">p = 67</button>
+            </div>
+          </div>
+
+          <!-- Shortcut Presets -->
+          <div class="presets-row">
+            <button class="photo2-pill-btn small primary" onclick="setPresetBitcoin()">
+              Bitcoin Curve (a=0, b=7)
+            </button>
+            <button class="photo2-pill-btn small" onclick="setPresetTwoComponents()">
+              Two-Component (a=-3, b=1)
+            </button>
+          </div>
+          <div id="graph-discriminant-tag" class="discriminant-tag">
+            Non-singular curve (Δ ≠ 0)
+          </div>
+        </div>
+
+        <!-- Card 2: Point Summation Stepper (G + G + G + ...) -->
+        <div class="photo2-card graph-sidebar-card">
+          <div class="sidebar-card-header">
+            <h3>Public Key Generation Stepper</h3>
+            <span class="stepper-count-badge" id="stepper-badge">Step d = 1</span>
+          </div>
+          
+          <div class="stepper-info-box">
+            <div class="stepper-info-row">
+              <span class="info-label">Private Key (Scalar):</span>
+              <span id="stepper-private-key" class="info-val">d = 1</span>
+            </div>
+            <div class="stepper-info-row">
+              <span class="info-label">Public Key Point (Q = d·G):</span>
+              <span id="stepper-public-point" class="info-val">(-1.50, 1.90)</span>
+            </div>
+          </div>
+
+          <!-- Direct Scalar Jump Slider -->
+          <div class="slider-group" style="margin-top: 10px;">
+            <div class="slider-label-row">
+              <label for="stepper-step-slider">Direct Scalar Step (d):</label>
+              <span id="stepper-step-slider-val" class="slider-num">d = 1</span>
+            </div>
+            <input type="range" id="stepper-step-slider" min="1" max="100" step="1" value="1" class="graph-range-slider" oninput="setStepperStep(this.value)">
+          </div>
+
+          <!-- Stepper Buttons Row -->
+          <div class="stepper-buttons-row" style="margin-top: 8px;">
+            <button id="step-prev-btn" class="photo2-pill-btn small" onclick="stepPrevious()">
+              ← Prev
+            </button>
+            <button id="step-next-btn" class="photo2-pill-btn small primary" onclick="stepNext()">
+              Next Step (+G)
+            </button>
+            <button id="step-play-btn" class="photo2-pill-btn small" onclick="togglePlaySteps()">
+              Auto Play
+            </button>
+            <button class="photo2-pill-btn small" onclick="resetSteps()">
+              Reset (1·G)
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 3: Geometric Explanation of Current Step -->
+        <div class="photo2-card graph-sidebar-card">
+          <div class="sidebar-card-header">
+            <h3>Geometric Step Construction</h3>
+          </div>
+          <div id="step-math-breakdown" class="step-math-breakdown">
+            <div class="step-math-box">
+              Base Generator Point G = (-1.00, 2.45)<br>
+              Public Point Q = 1 · G = (-1.00, 2.45)
+            </div>
+            <div class="step-crypto-hint">
+              Click <b>Next Step (+G)</b> to double point G (G + G = 2G) via tangent line!
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- Custom Right-Click Context Menu -->
+  <div id="custom-context-menu" class="custom-context-menu">
+    <div style="font-size:11px; font-weight:800; color:var(--text-muted); padding:4px 12px; letter-spacing:0.5px;">
+      CHARACTER: <span id="context-menu-target-name" style="color:var(--color-blue);">ALICE</span>
+    </div>
+    <button class="context-menu-item primary-action" onclick="onContextMenuSend()">
+      <span>Send Encrypted Message</span>
+    </button>
+    <button class="context-menu-item" onclick="openMathModal()">
+      <span>View secp256k1 Formula</span>
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item" onclick="onContextMenuCopyPub()">
+      <span>Copy Public Key</span>
+      <span>📋</span>
+    </button>
+  </div>
+
+  <!-- Cryptography / Math Explainer Panel (No background blur) -->
+  <div id="math-drawer-backdrop" class="math-drawer-backdrop" onclick="closeMathModal()"></div>
+  <div id="math-drawer-panel" class="math-drawer-panel">
+    <div class="dialog-header">
+      <div class="dialog-title-group">
+        <h3>Bitcoin Elliptic Curve Cryptography</h3>
+        <p>secp256k1 Parameter & Asymmetric Encryption Architecture</p>
+      </div>
+      <button class="close-btn" onclick="closeMathModal()" title="Close">✕</button>
+    </div>
+
+    <div class="math-modal-body">
+      
+      <div style="text-align:center; background:#FFFFFF; border-radius:18px; padding:12px; border:1px solid rgba(0,28,224,0.08);">
+        <div style="font-size:12px; font-weight:700; color:var(--color-blue); margin-bottom:8px;">
+          Plot of y² = x³ + 7 with Base Generator Point G
+        </div>
+        <canvas id="curve-canvas" width="560" height="180" style="width:100%; max-height:180px; border-radius:12px;"></canvas>
+      </div>
+
+      <div class="math-step-card">
+        <div class="math-step-title">
+          <span>1. Curve Equation & Parameters</span>
+        </div>
+        <div class="math-step-desc">
+          Bitcoin uses the elliptic curve <b>secp256k1</b> defined over the finite prime field <b>F<sub>p</sub></b>:
+        </div>
+        <div class="math-step-formula">
+          y² ≡ x³ + 7 (mod p)
+          <br>
+          p = 2²⁵⁶ − 2³² − 977 (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F)
+        </div>
+      </div>
+
+      <div class="math-step-card">
+        <div class="math-step-title">
+          <span>2. Private & Public Key Derivation</span>
+        </div>
+        <div class="math-step-desc">
+          • <b>Private Key (d)</b>: A randomly generated 256-bit secret scalar: 1 ≤ d &lt; n<br>
+          • <b>Public Key (Q)</b>: A point on the curve obtained by multiplying base generator point G by scalar d:
+        </div>
+        <div class="math-step-formula">
+          Q = d · G = G + G + … + G  (d times)
+        </div>
+        <div class="math-step-desc" style="font-size:12px; color:var(--text-muted); margin-top:6px;">
+          Because of the <i>Elliptic Curve Discrete Logarithm Problem (ECDLP)</i>, it is computationally impossible to deduce the secret <b>d</b> from the public point <b>Q</b>.
+        </div>
+      </div>
+
+      <div class="math-step-card">
+        <div class="math-step-title">
+          <span>3. How Asymmetric Encryption (ECIES) Works</span>
+        </div>
+        <div class="math-step-desc">
+          1. Sender generates an ephemeral random secret <b>k</b> and computes ephemeral public point <b>R = k · G</b>.<br>
+          2. Sender computes shared secret point <b>S = k · Q<sub>receiver</sub></b>.<br>
+          3. Sender derives symmetric key <b>K = SHA-256(S<sub>x</sub>)</b> to encrypt the message (AES-256-GCM).<br>
+          4. Receiver receives (R, ciphertext) and uses their private key <b>d</b>:
+        </div>
+        <div class="math-step-formula">
+          S = d<sub>receiver</sub> · R = d · (k · G) = k · (d · G) = k · Q<sub>receiver</sub> = S
+        </div>
+        <div class="math-step-desc" style="font-size:12px; color:var(--text-muted); margin-top:6px;">
+          Both parties compute the exact same secret point <b>S</b> without ever transmitting their private keys over the wire!
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:flex; justify-content:flex-end;">
+      <button class="photo2-pill-btn primary small" onclick="closeMathModal()">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Alert -->
+  <div id="floating-alert" class="floating-alert">
+    <span id="alert-text">Message</span>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
