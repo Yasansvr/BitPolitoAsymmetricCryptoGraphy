@@ -8,7 +8,47 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2.0">
+  <style>
+    /* Critical Header Navigation Tab Styling (Photo 2 Floating Pills) */
+    .nav-tabs-group {
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+    }
+    .nav-tab-btn {
+      background: #FFFFFF !important;
+      color: #001CE0 !important;
+      box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.08), 0 6px 16px -2px rgba(0, 0, 0, 0.03) !important;
+      border: 1px solid rgba(0, 0, 0, 0.03) !important;
+      border-radius: 9999px !important;
+      padding: 8px 18px !important;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.2px !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      outline: none !important;
+      text-decoration: none !important;
+      white-space: nowrap !important;
+    }
+    .nav-tab-btn:hover {
+      transform: translateY(-2px) !important;
+      color: #0016B8 !important;
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 8px 18px -2px rgba(0, 0, 0, 0.05) !important;
+    }
+    .nav-tab-btn.active {
+      background: #001CE0 !important;
+      color: #FFFFFF !important;
+      border: 1px solid #001CE0 !important;
+      box-shadow: 0 16px 36px -6px rgba(0, 28, 224, 0.35), 0 6px 14px -2px rgba(0, 28, 224, 0.2) !important;
+    }
+  </style>
 </head>
 <body>
 
@@ -33,10 +73,18 @@
     </div>
 
     <div class="header-actions">
-      <!-- Cryptography Guide Toggle Button -->
-      <button class="photo2-pill-btn primary" id="nav-guide-btn" onclick="toggleGuideView()">
-        <span>Cryptography Guide</span>
-      </button>
+      <!-- Header Tabs Navigation Group -->
+      <nav class="nav-tabs-group" role="tablist" aria-label="Main Navigation">
+        <button class="photo2-pill-btn small nav-tab-btn active" id="tab-nav-sim" onclick="switchView('simulator')">
+          <span>Simulator</span>
+        </button>
+        <button class="photo2-pill-btn small nav-tab-btn" id="nav-guide-btn" onclick="switchView('graph')">
+          <span>Cryptography Guide</span>
+        </button>
+        <button class="photo2-pill-btn small nav-tab-btn" id="tab-nav-address" onclick="switchView('address')">
+          <span>Point to Address</span>
+        </button>
+      </nav>
       <button id="sound-toggle-btn" class="photo2-pill-btn small" onclick="toggleSound()">
         Sound: ON
       </button>
@@ -577,6 +625,594 @@
 
   </section>
 
+  <!-- Main View 3: Point to Address Game & Cryptographic Generators Stage -->
+  <section class="address-stage" id="view-point-address" style="display:none;">
+
+    <!-- Top Header & Game Status Banner -->
+    <div class="address-stage-header">
+      <div class="address-header-left">
+        <div class="pill-badge">
+          <span class="dot"></span>
+          <span>Bitcoin P2PKH Pipeline</span>
+        </div>
+        <h2 class="address-title">Point to Bitcoin Address</h2>
+        <p class="address-subtitle">
+          Interactive educational game: convert an elliptic curve point <code>(X, Y)</code> into a Base58 Bitcoin Address.
+        </p>
+      </div>
+
+      <div class="address-header-actions">
+        <button class="photo2-pill-btn small" id="p2a-btn-reset" onclick="resetAddressGame()">
+          <span>Reset Game</span>
+        </button>
+        <button class="photo2-pill-btn primary small" id="p2a-btn-solve-all" onclick="solveAllAddressSteps()">
+          <span>Solve All Steps</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Section 1: Predefined Point Selector & Real Hex Coordinates -->
+    <div class="photo2-card address-card" id="p2a-coords-card">
+      <div class="address-card-header">
+        <div class="address-step-tag">Source Point</div>
+        <div>
+          <h3 class="address-card-title">Elliptic Curve Point Coordinates (X, Y)</h3>
+          <p class="address-card-desc">
+            Public keys on secp256k1 are points <code>Q = (x, y)</code> lying on <code>y² ≡ x³ + 7 (mod p)</code>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Point Selector Presets -->
+      <div class="p2a-preset-selector-row">
+        <span class="p2a-selector-label">Preset Point:</span>
+        <div class="p2a-preset-pills" id="p2a-preset-group">
+          <button class="p2a-preset-btn active" id="btn-preset-wiki" onclick="selectPointPreset('wiki_standard')">
+            Standard Vector
+          </button>
+          <button class="p2a-preset-btn" id="btn-preset-satoshi" onclick="selectPointPreset('satoshi_genesis')">
+            Satoshi Genesis
+          </button>
+          <button class="p2a-preset-btn" id="btn-preset-g" onclick="selectPointPreset('generator_g')">
+            Generator G
+          </button>
+          <button class="p2a-preset-btn" id="btn-preset-alice" onclick="selectPointPreset('alice')">
+            Alice's Point
+          </button>
+          <button class="p2a-preset-btn" id="btn-preset-bob" onclick="selectPointPreset('bob')">
+            Bob's Point
+          </button>
+          <button class="p2a-preset-btn" id="btn-preset-custom" onclick="selectPointPreset('custom')">
+            Custom (X, Y)
+          </button>
+        </div>
+      </div>
+
+      <!-- Hex Coordinates Grid -->
+      <div class="p2a-coords-grid">
+        <div class="p2a-coord-box">
+          <div class="p2a-coord-header">
+            <span class="p2a-coord-name">X Coordinate (32 bytes / 64 hex)</span>
+            <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-x-val')" title="Copy X Coordinate">
+              📋
+            </button>
+          </div>
+          <div class="p2a-hex-display" id="p2a-x-val">
+            50863AD64A87AE8A2FE83C1AF1A8403CB53F53E486D8511DAD8A04887E5B2352
+          </div>
+        </div>
+
+        <div class="p2a-coord-box">
+          <div class="p2a-coord-header">
+            <span class="p2a-coord-name">Y Coordinate (32 bytes / 64 hex)</span>
+            <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-y-val')" title="Copy Y Coordinate">
+              📋
+            </button>
+          </div>
+          <div class="p2a-hex-display" id="p2a-y-val">
+            2CD470243453A299FA9E77237716103ABC11A1DF38855ED6F2EE187E9C582BA6
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Input Drawer (Hidden by default) -->
+      <div class="p2a-custom-drawer" id="p2a-custom-drawer" style="display:none;">
+        <div class="p2a-custom-inputs-row">
+          <div class="p2a-custom-field">
+            <label for="p2a-input-custom-x">Custom X (Hex, 64 chars):</label>
+            <input type="text" id="p2a-input-custom-x" class="p2a-input" placeholder="e.g. 50863ad64a87ae...">
+          </div>
+          <div class="p2a-custom-field">
+            <label for="p2a-input-custom-y">Custom Y (Hex, 64 chars):</label>
+            <input type="text" id="p2a-input-custom-y" class="p2a-input" placeholder="e.g. 2cd470243453a2...">
+          </div>
+          <button class="photo2-pill-btn primary small" onclick="applyCustomCoordinates()" style="align-self:flex-end;">
+            Load Coordinates
+          </button>
+        </div>
+      </div>
+
+      <!-- Parity Mathematical Callout -->
+      <div class="p2a-parity-callout" id="p2a-parity-box">
+        <div class="p2a-parity-indicator">
+          <span class="p2a-parity-badge even" id="p2a-parity-badge">Y is EVEN</span>
+          <span class="p2a-parity-details" id="p2a-parity-details">
+            Last hex digit of Y is <b>'6'</b> (even). Compressed prefix = <code>02</code>.
+          </span>
+        </div>
+        <div class="p2a-parity-math-explanation">
+          <b>Why does this work?</b> For any point on <code>y² ≡ x³ + 7 (mod p)</code>, solving for <code>y</code> yields two symmetric square roots: <code>+y</code> and <code>-y ≡ p - y</code>. Because the prime <code>p</code> is odd, one root is always <b>even</b> and the other is always <b>odd</b>. By saving <code>02</code> (even) or <code>03</code> (odd) plus the 32-byte <code>x</code> coordinate, the full point is uniquely defined while saving 32 bytes!
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Section 2: Interactive Game Stepper (6 Steps) -->
+    <div class="p2a-game-wrapper">
+
+      <!-- Step Navigation Pills -->
+      <div class="p2a-step-nav" id="p2a-step-nav">
+        <button class="p2a-nav-pill active" id="p2a-nav-step-1" onclick="jumpToAddressStep(1)">
+          <span class="p2a-nav-num">1</span>
+          <span class="p2a-nav-title">Format & PubKey</span>
+        </button>
+        <button class="p2a-nav-pill" id="p2a-nav-step-2" onclick="jumpToAddressStep(2)">
+          <span class="p2a-nav-num">2</span>
+          <span class="p2a-nav-title">SHA-256</span>
+        </button>
+        <button class="p2a-nav-pill" id="p2a-nav-step-3" onclick="jumpToAddressStep(3)">
+          <span class="p2a-nav-num">3</span>
+          <span class="p2a-nav-title">RIPEMD-160</span>
+        </button>
+        <button class="p2a-nav-pill" id="p2a-nav-step-4" onclick="jumpToAddressStep(4)">
+          <span class="p2a-nav-num">4</span>
+          <span class="p2a-nav-title">Network Byte</span>
+        </button>
+        <button class="p2a-nav-pill" id="p2a-nav-step-5" onclick="jumpToAddressStep(5)">
+          <span class="p2a-nav-num">5</span>
+          <span class="p2a-nav-title">Checksum</span>
+        </button>
+        <button class="p2a-nav-pill" id="p2a-nav-step-6" onclick="jumpToAddressStep(6)">
+          <span class="p2a-nav-num">6</span>
+          <span class="p2a-nav-title">Base58 Address</span>
+        </button>
+      </div>
+
+      <!-- STEP 1 CARD -->
+      <div class="photo2-card p2a-step-card active" id="p2a-card-step-1">
+        <div class="p2a-card-header-row">
+          <div class="p2a-step-badge">Step 1 of 6</div>
+          <h3 class="p2a-step-heading">Format Selection & Public Key Assembly</h3>
+        </div>
+        <p class="p2a-step-explanation">
+          How do we represent the 2D point <code>(X, Y)</code> as a public key string? Choose between <b>Compressed</b> and <b>Uncompressed</b> format.
+        </p>
+
+        <!-- Format Options -->
+        <div class="p2a-format-selection-group">
+          <div class="p2a-format-card" id="format-card-comp" onclick="setKeyFormat('compressed')">
+            <div class="p2a-format-radio-row">
+              <input type="radio" name="p2a-format" id="radio-comp" value="compressed" checked>
+              <label for="radio-comp"><b>Compressed Format (33 bytes / 66 hex)</b></label>
+            </div>
+            <p class="p2a-format-note">
+              Modern standard (BIP-137). Adds <code>02</code> if Y is even, or <code>03</code> if Y is odd, followed by X. Saves blockchain space!
+            </p>
+          </div>
+
+          <div class="p2a-format-card" id="format-card-uncomp" onclick="setKeyFormat('uncompressed')">
+            <div class="p2a-format-radio-row">
+              <input type="radio" name="p2a-format" id="radio-uncomp" value="uncompressed">
+              <label for="radio-uncomp"><b>Uncompressed Format (65 bytes / 130 hex)</b></label>
+            </div>
+            <p class="p2a-format-note">
+              Legacy Bitcoin format (2009–2012). Adds prefix <code>04</code> followed sequentially by full X and Y coordinates.
+            </p>
+          </div>
+        </div>
+
+        <!-- Parity Challenge (for compressed format) -->
+        <div class="p2a-challenge-box" id="p2a-parity-challenge-box">
+          <div class="p2a-challenge-question">
+            <b>Interactive Check:</b> Y coordinate ends in <code id="p2a-challenge-y-char">6</code>. Which prefix byte should we use?
+          </div>
+          <div class="p2a-challenge-options">
+            <button class="p2a-challenge-btn" id="btn-prefix-02" onclick="handlePrefixGuess('02')">
+              Prefix 02 (Even Y)
+            </button>
+            <button class="p2a-challenge-btn" id="btn-prefix-03" onclick="handlePrefixGuess('03')">
+              Prefix 03 (Odd Y)
+            </button>
+          </div>
+          <div class="p2a-challenge-feedback" id="p2a-prefix-feedback" style="display:none;"></div>
+        </div>
+
+        <!-- Assembled Public Key Output -->
+        <div class="p2a-output-section">
+          <div class="p2a-output-header">
+            <span class="p2a-output-label">Assembled Public Key:</span>
+            <span class="p2a-badge-bytes" id="p2a-pubkey-bytes-badge">33 Bytes (66 hex)</span>
+            <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-assembled-pubkey')" title="Copy Public Key">
+              📋
+            </button>
+          </div>
+          <div class="p2a-segmented-hex" id="p2a-assembled-pubkey">
+            <!-- Rendered dynamically with color chips -->
+          </div>
+        </div>
+
+        <div class="p2a-card-footer">
+          <button class="photo2-pill-btn primary" onclick="completeStep1AndAdvance()">
+            <span>Proceed to Step 2: SHA-256 ➔</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2 CARD: SHA-256 GENERATOR -->
+      <div class="photo2-card p2a-step-card" id="p2a-card-step-2">
+        <div class="p2a-card-header-row">
+          <div class="p2a-step-badge">Step 2 of 6</div>
+          <h3 class="p2a-step-heading">SHA-256 Hash Function</h3>
+        </div>
+        <p class="p2a-step-explanation">
+          Bitcoin passes the public key bytes through <b>SHA-256</b> first. This produces a fixed 256-bit (32-byte / 64 hex) digest, providing pre-image resistance and a standardized size.
+        </p>
+
+        <div class="p2a-generator-unit">
+          <div class="p2a-input-group">
+            <label for="p2a-step2-input">Input: Public Key Hex</label>
+            <input type="text" id="p2a-step2-input" class="p2a-input-mono" spellcheck="false">
+          </div>
+
+          <div class="p2a-generator-actions">
+            <button class="photo2-pill-btn primary small" onclick="runStep2Sha256()">
+              <span>Compute SHA-256</span>
+            </button>
+          </div>
+
+          <div class="p2a-output-group">
+            <div class="p2a-output-header">
+              <span class="p2a-output-label">SHA-256 Digest (32 bytes / 64 hex):</span>
+              <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-step2-output')" title="Copy SHA-256 Hash">
+                📋
+              </button>
+            </div>
+            <div class="p2a-hex-box" id="p2a-step2-output">
+              (Click Compute SHA-256)
+            </div>
+          </div>
+        </div>
+
+        <div class="p2a-card-footer">
+          <button class="photo2-pill-btn small" onclick="jumpToAddressStep(1)">
+            <span>Back</span>
+          </button>
+          <button class="photo2-pill-btn primary" id="p2a-btn-next-step2" onclick="completeStep2AndAdvance()" disabled>
+            <span>Proceed to Step 3: RIPEMD-160 ➔</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3 CARD: RIPEMD-160 GENERATOR -->
+      <div class="photo2-card p2a-step-card" id="p2a-card-step-3">
+        <div class="p2a-card-header-row">
+          <div class="p2a-step-badge">Step 3 of 6</div>
+          <h3 class="p2a-step-heading">RIPEMD-160 Hash Function (PubKeyHash)</h3>
+        </div>
+        <p class="p2a-step-explanation">
+          The 32-byte SHA-256 digest is fed into <b>RIPEMD-160</b> to create a compact 160-bit (20-byte / 40 hex) <b>Public Key Hash (PubKeyHash / Hash160)</b>.
+          <br>
+          <b>Why two hash algorithms?</b> If an unexpected theoretical weakness is ever found in SHA-256 or ECDSA, RIPEMD-160 still shields unspent coins!
+        </p>
+
+        <div class="p2a-generator-unit">
+          <div class="p2a-input-group">
+            <label for="p2a-step3-input">Input: SHA-256 Digest Hex</label>
+            <input type="text" id="p2a-step3-input" class="p2a-input-mono" spellcheck="false">
+          </div>
+
+          <div class="p2a-generator-actions">
+            <button class="photo2-pill-btn primary small" onclick="runStep3Ripemd160()">
+              <span>Compute RIPEMD-160</span>
+            </button>
+          </div>
+
+          <div class="p2a-output-group">
+            <div class="p2a-output-header">
+              <span class="p2a-output-label">PubKeyHash / Hash160 (20 bytes / 40 hex):</span>
+              <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-step3-output')" title="Copy PubKeyHash">
+                📋
+              </button>
+            </div>
+            <div class="p2a-hex-box" id="p2a-step3-output">
+              (Click Compute RIPEMD-160)
+            </div>
+          </div>
+        </div>
+
+        <div class="p2a-card-footer">
+          <button class="photo2-pill-btn small" onclick="jumpToAddressStep(2)">
+            <span>Back</span>
+          </button>
+          <button class="photo2-pill-btn primary" id="p2a-btn-next-step3" onclick="completeStep3AndAdvance()" disabled>
+            <span>Proceed to Step 4: Network Byte ➔</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 4 CARD: NETWORK VERSION BYTE -->
+      <div class="photo2-card p2a-step-card" id="p2a-card-step-4">
+        <div class="p2a-card-header-row">
+          <div class="p2a-step-badge">Step 4 of 6</div>
+          <h3 class="p2a-step-heading">Add Bitcoin Network Version Byte (00)</h3>
+        </div>
+        <p class="p2a-step-explanation">
+          To specify the destination network, a 1-byte version prefix is added to the start of the 20-byte PubKeyHash.
+          For <b>Bitcoin Mainnet</b>, the version byte is <code>0x00</code> (Testnet uses <code>0x6F</code>).
+        </p>
+
+        <div class="p2a-generator-unit">
+          <div class="p2a-generator-actions">
+            <button class="photo2-pill-btn primary small" onclick="runStep4AddVersion()">
+              <span>Prepend Mainnet Byte (00)</span>
+            </button>
+          </div>
+
+          <div class="p2a-output-group">
+            <div class="p2a-output-header">
+              <span class="p2a-output-label">Versioned Payload (21 bytes / 42 hex):</span>
+              <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-step4-output-raw')" title="Copy Versioned Payload">
+                📋
+              </button>
+            </div>
+            <div class="p2a-hex-box" id="p2a-step4-output">
+              (Click Prepend Mainnet Byte)
+            </div>
+            <span id="p2a-step4-output-raw" style="display:none;"></span>
+          </div>
+        </div>
+
+        <div class="p2a-card-footer">
+          <button class="photo2-pill-btn small" onclick="jumpToAddressStep(3)">
+            <span>Back</span>
+          </button>
+          <button class="photo2-pill-btn primary" id="p2a-btn-next-step4" onclick="completeStep4AndAdvance()" disabled>
+            <span>Proceed to Step 5: Checksum ➔</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 5 CARD: DOUBLE SHA-256 CHECKSUM -->
+      <div class="photo2-card p2a-step-card" id="p2a-card-step-5">
+        <div class="p2a-card-header-row">
+          <div class="p2a-step-badge">Step 5 of 6</div>
+          <h3 class="p2a-step-heading">Double SHA-256 Checksum Calculation</h3>
+        </div>
+        <p class="p2a-step-explanation">
+          To prevent catastrophic typos from burning user coins, Bitcoin performs a <b>double SHA-256 hash</b> on the 21-byte versioned payload: <code>SHA256(SHA256(payload))</code>. The first 4 bytes (8 hex chars) are appended as an error-detection checksum.
+        </p>
+
+        <div class="p2a-generator-unit">
+          <div class="p2a-generator-actions">
+            <button class="photo2-pill-btn primary small" onclick="runStep5Checksum()">
+              <span>Calculate Double SHA-256 Checksum</span>
+            </button>
+          </div>
+
+          <!-- Step-by-Step Checksum Breakdown -->
+          <div class="p2a-checksum-breakdown-grid" id="p2a-checksum-breakdown" style="display:none;">
+            <div class="p2a-cs-substep">
+              <span class="p2a-cs-label">1. First SHA-256: <code>SHA256(payload)</code></span>
+              <div class="p2a-cs-val" id="p2a-cs-hash1"></div>
+            </div>
+
+            <div class="p2a-cs-substep">
+              <span class="p2a-cs-label">2. Second SHA-256: <code>SHA256(Hash 1)</code></span>
+              <div class="p2a-cs-val" id="p2a-cs-hash2"></div>
+            </div>
+
+            <div class="p2a-cs-substep highlight">
+              <span class="p2a-cs-label">3. Checksum (First 4 bytes / 8 hex digits):</span>
+              <div class="p2a-cs-val checksum-highlight" id="p2a-cs-extracted"></div>
+            </div>
+          </div>
+
+          <div class="p2a-output-group">
+            <div class="p2a-output-header">
+              <span class="p2a-output-label">Complete 25-Byte Binary Payload (50 hex):</span>
+              <button class="p2a-copy-icon-btn" onclick="copyTextById('p2a-step5-output-raw')" title="Copy 25-Byte Payload">
+                📋
+              </button>
+            </div>
+            <div class="p2a-hex-box" id="p2a-step5-output">
+              (Click Calculate Checksum)
+            </div>
+            <span id="p2a-step5-output-raw" style="display:none;"></span>
+          </div>
+        </div>
+
+        <div class="p2a-card-footer">
+          <button class="photo2-pill-btn small" onclick="jumpToAddressStep(4)">
+            <span>Back</span>
+          </button>
+          <button class="photo2-pill-btn primary" id="p2a-btn-next-step5" onclick="completeStep5AndAdvance()" disabled>
+            <span>Proceed to Step 6: Base58 Encoding ➔</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 6 CARD: BASE58 ENCODER -->
+      <div class="photo2-card p2a-step-card" id="p2a-card-step-6">
+        <div class="p2a-card-header-row">
+          <div class="p2a-step-badge">Step 6 of 6</div>
+          <h3 class="p2a-step-heading">Base58 Encoding (Final Bitcoin Address)</h3>
+        </div>
+        <p class="p2a-step-explanation">
+          <b>Why Base58?</b> Standard Base64 uses characters that look identical in many fonts: <code>0</code> (zero) vs <code>O</code> (capital O), <code>I</code> (capital i) vs <code>l</code> (lowercase L), plus symbols <code>+</code> and <code>/</code>. Base58 omits all 6 ambiguous symbols! Each leading <code>00</code> byte maps to the numeral <code>1</code>.
+        </p>
+
+        <div class="p2a-generator-unit">
+          <div class="p2a-input-group">
+            <label for="p2a-step6-input">Input: 25-Byte Binary Payload Hex</label>
+            <input type="text" id="p2a-step6-input" class="p2a-input-mono" spellcheck="false">
+          </div>
+
+          <div class="p2a-generator-actions">
+            <button class="photo2-pill-btn primary small" onclick="runStep6Base58()">
+              <span>Encode with Base58</span>
+            </button>
+          </div>
+
+          <!-- Final Address Banner -->
+          <div class="p2a-final-address-card" id="p2a-final-address-card" style="display:none;">
+            <div class="p2a-address-banner-tag">BITCOIN P2PKH MAINNET ADDRESS</div>
+            <div class="p2a-final-address-row">
+              <span class="p2a-final-address-text" id="p2a-final-address-val">
+                1...
+              </span>
+              <button class="photo2-pill-btn primary small" onclick="copyTextById('p2a-final-address-val')">
+                <span>Copy</span>
+                <span>📋</span>
+              </button>
+            </div>
+            <div class="p2a-address-meta-row">
+              <span class="p2a-meta-pill">Starts with '1' (Mainnet P2PKH)</span>
+              <span class="p2a-meta-pill" id="p2a-meta-format-tag">Compressed Public Key</span>
+              <span class="p2a-meta-pill success">Checksum Validated</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Victory Banner -->
+        <div class="p2a-victory-card" id="p2a-victory-card" style="display:none;">
+          <h4 class="p2a-victory-title">Address Successfully Derived!</h4>
+          <p class="p2a-victory-desc">
+            You walked through every cryptographic step Bitcoin uses to turn an abstract curve point into a spending address.
+          </p>
+
+          <div class="p2a-summary-table">
+            <div class="p2a-summary-row">
+              <span class="p2a-sum-col-label">Curve Point (X, Y):</span>
+              <span class="p2a-sum-col-val" id="p2a-sum-point"></span>
+            </div>
+            <div class="p2a-summary-row">
+              <span class="p2a-sum-col-label">Public Key (Hex):</span>
+              <span class="p2a-sum-col-val" id="p2a-sum-pubkey"></span>
+            </div>
+            <div class="p2a-summary-row">
+              <span class="p2a-sum-col-label">PubKeyHash (RIPEMD-160):</span>
+              <span class="p2a-sum-col-val" id="p2a-sum-hash160"></span>
+            </div>
+            <div class="p2a-summary-row">
+              <span class="p2a-sum-col-label">Final Bitcoin Address:</span>
+              <span class="p2a-sum-col-val highlight" id="p2a-sum-address"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="p2a-card-footer">
+          <button class="photo2-pill-btn small" onclick="jumpToAddressStep(5)">
+            <span>Back</span>
+          </button>
+          <button class="photo2-pill-btn primary small" onclick="resetAddressGame()">
+            <span>Restart Game</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Section 3: Standalone Cryptographic Generators Sandbox -->
+    <div class="photo2-card address-card" id="p2a-tools-sandbox">
+      <div class="address-card-header">
+        <div class="address-step-tag">Crypto Toolbox</div>
+        <div>
+          <h3 class="address-card-title">Standalone Cryptographic Generators</h3>
+          <p class="address-card-desc">
+            Test any custom hexadecimal or text inputs with individual SHA-256, RIPEMD-160, and Base58 tools.
+          </p>
+        </div>
+      </div>
+
+      <div class="p2a-toolbox-grid">
+
+        <!-- Tool A: SHA-256 Generator -->
+        <div class="p2a-tool-card">
+          <div class="p2a-tool-header">
+            <h4>SHA-256 Generator</h4>
+            <div class="p2a-tool-format-toggle">
+              <button class="p2a-mode-btn active" id="tool-sha-mode-hex" onclick="setToolMode('sha', 'hex')">Hex</button>
+              <button class="p2a-mode-btn" id="tool-sha-mode-text" onclick="setToolMode('sha', 'text')">Text</button>
+            </div>
+          </div>
+          <div class="p2a-tool-body">
+            <textarea id="tool-sha-input" class="p2a-tool-textarea" rows="2" placeholder="Enter hex string or text to hash..."></textarea>
+            <button class="photo2-pill-btn primary small" onclick="runStandaloneSha256()">
+              <span>Compute SHA-256</span>
+            </button>
+            <div class="p2a-tool-output-box">
+              <div class="p2a-tool-output-header">
+                <span>Output Digest (32 bytes):</span>
+                <button class="p2a-copy-icon-btn" onclick="copyTextById('tool-sha-output')" title="Copy Digest">📋</button>
+              </div>
+              <div class="p2a-tool-output-val" id="tool-sha-output">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool B: RIPEMD-160 Generator -->
+        <div class="p2a-tool-card">
+          <div class="p2a-tool-header">
+            <h4>RIPEMD-160 Generator</h4>
+            <div class="p2a-tool-format-toggle">
+              <button class="p2a-mode-btn active" id="tool-ripe-mode-hex" onclick="setToolMode('ripe', 'hex')">Hex</button>
+              <button class="p2a-mode-btn" id="tool-ripe-mode-text" onclick="setToolMode('ripe', 'text')">Text</button>
+            </div>
+          </div>
+          <div class="p2a-tool-body">
+            <textarea id="tool-ripe-input" class="p2a-tool-textarea" rows="2" placeholder="Enter hex string or text to hash..."></textarea>
+            <button class="photo2-pill-btn primary small" onclick="runStandaloneRipemd160()">
+              <span>Compute RIPEMD-160</span>
+            </button>
+            <div class="p2a-tool-output-box">
+              <div class="p2a-tool-output-header">
+                <span>Output Digest (20 bytes):</span>
+                <button class="p2a-copy-icon-btn" onclick="copyTextById('tool-ripe-output')" title="Copy Digest">📋</button>
+              </div>
+              <div class="p2a-tool-output-val" id="tool-ripe-output">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool C: Base58 Encoder / Decoder -->
+        <div class="p2a-tool-card">
+          <div class="p2a-tool-header">
+            <h4>Base58 Tool</h4>
+            <div class="p2a-tool-format-toggle">
+              <button class="p2a-mode-btn active" id="tool-b58-mode-enc" onclick="setToolMode('b58', 'encode')">Encode</button>
+              <button class="p2a-mode-btn" id="tool-b58-mode-dec" onclick="setToolMode('b58', 'decode')">Decode</button>
+            </div>
+          </div>
+          <div class="p2a-tool-body">
+            <textarea id="tool-b58-input" class="p2a-tool-textarea" rows="2" placeholder="Enter hex payload to encode..."></textarea>
+            <button class="photo2-pill-btn primary small" id="tool-b58-btn" onclick="runStandaloneBase58()">
+              <span>Encode to Base58</span>
+            </button>
+            <div class="p2a-tool-output-box">
+              <div class="p2a-tool-output-header">
+                <span id="tool-b58-output-label">Base58 Result:</span>
+                <button class="p2a-copy-icon-btn" onclick="copyTextById('tool-b58-output')" title="Copy Result">📋</button>
+              </div>
+              <div class="p2a-tool-output-val" id="tool-b58-output">-</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+
   <!-- Custom Right-Click Context Menu -->
   <div id="custom-context-menu" class="custom-context-menu">
     <div style="font-size:11px; font-weight:800; color:var(--text-muted); padding:4px 12px; letter-spacing:0.5px;">
@@ -677,6 +1313,6 @@
     <span id="alert-text">Message</span>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script src="bundle.js"></script>
 </body>
 </html>

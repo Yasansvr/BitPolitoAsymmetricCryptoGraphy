@@ -1,5 +1,16 @@
 {
+  "name": "bitpolito-crypto-simulator",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild app.js --bundle --outfile=bundle.js --format=iife",
+    "test": "node test_sim.js && node test_extended_steps.js && node test_point_to_address.js"
+  },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "puppeteer": "^25.13.0"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0"
   }
 }

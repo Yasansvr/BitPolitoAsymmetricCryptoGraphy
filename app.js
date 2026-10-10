@@ -15,6 +15,20 @@ import {
 } from './crypto.js';
 
 import { EllipticGraphEngine } from './graph.js';
+import {
+  PREDEFINED_POINTS,
+  assemblePublicKey,
+  deriveAddressPipeline,
+  getYParity,
+  sha256Hex,
+  ripemd160Hex,
+  base58Encode,
+  base58Decode,
+  computeChecksum,
+  hexToBytes,
+  bytesToHex,
+  utf8ToBytes
+} from './address.js';
 
 // Application State
 const state = {
@@ -799,16 +813,29 @@ window.toggleSound = function() {
 
 let graphEngine = null;
 
-// Switch between Simulator View and Desmos 2D Graph / Cryptography Guide View
+// Switch between Simulator View, Desmos 2D Graph Guide View, and Point to Address View
 window.switchView = function(viewName) {
   const simView = document.getElementById('view-simulator');
   const graphView = document.getElementById('view-graph');
-  const navGuideBtn = document.getElementById('nav-guide-btn');
+  const addressView = document.getElementById('view-point-address');
+
+  const tabSim = document.getElementById('tab-nav-sim');
+  const tabGuide = document.getElementById('nav-guide-btn');
+  const tabAddress = document.getElementById('tab-nav-address');
+
+  // Hide all views first
+  if (simView) simView.style.display = 'none';
+  if (graphView) graphView.style.display = 'none';
+  if (addressView) addressView.style.display = 'none';
+
+  // Clear active tab button styling
+  if (tabSim) tabSim.classList.remove('active');
+  if (tabGuide) tabGuide.classList.remove('active');
+  if (tabAddress) tabAddress.classList.remove('active');
 
   if (viewName === 'graph') {
-    if (simView) simView.style.display = 'none';
     if (graphView) graphView.style.display = 'flex';
-    if (navGuideBtn) navGuideBtn.classList.add('active');
+    if (tabGuide) tabGuide.classList.add('active');
     
     // Initialize or resize graph engine
     initGraphEngine();
@@ -821,10 +848,19 @@ window.switchView = function(viewName) {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sound.playClick();
+  } else if (viewName === 'address') {
+    if (addressView) addressView.style.display = 'flex';
+    if (tabAddress) tabAddress.classList.add('active');
+    if (graphEngine && graphEngine.isPlaying) {
+      graphEngine.stopPlay();
+    }
+    initAddressGame();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    sound.playClick();
   } else {
-    if (graphView) graphView.style.display = 'none';
+    // Default: simulator view
     if (simView) simView.style.display = 'flex';
-    if (navGuideBtn) navGuideBtn.classList.remove('active');
+    if (tabSim) tabSim.classList.add('active');
     if (graphEngine && graphEngine.isPlaying) {
       graphEngine.stopPlay();
     }
@@ -835,12 +871,12 @@ window.switchView = function(viewName) {
 
 // Toggle Cryptography Guide View from single header button
 window.toggleGuideView = function() {
-  const simView = document.getElementById('view-simulator');
-  const isSimVisible = simView && simView.style.display !== 'none';
-  if (isSimVisible) {
-    window.switchView('graph');
-  } else {
+  const graphView = document.getElementById('view-graph');
+  const isGraphVisible = graphView && graphView.style.display !== 'none';
+  if (isGraphVisible) {
     window.switchView('simulator');
+  } else {
+    window.switchView('graph');
   }
 };
 
@@ -1226,5 +1262,784 @@ window.addEventListener('DOMContentLoaded', () => {
     updateConnectorLine();
     if (graphEngine) graphEngine.resize();
   });
+
+  // Initialize Point to Address Game if element exists
+  const addrStage = document.getElementById('view-point-address');
+  if (addrStage) {
+    initAddressGame();
+  }
 });
+
+// ==========================================================================
+// Point to Address Game Controller & Standalone Cryptography Tools
+// ==========================================================================
+
+const addressGameState = {
+  currentPresetId: 'wiki_standard',
+  xHex: '50863AD64A87AE8A2FE83C1AF1A8403CB53F53E486D8511DAD8A04887E5B2352',
+  yHex: '2CD470243453A299FA9E77237716103ABC11A1DF38855ED6F2EE187E9C582BA6',
+  format: 'compressed', // 'compressed' | 'uncompressed'
+  currentStep: 1,
+  step1Completed: false,
+  step2Completed: false,
+  step3Completed: false,
+  step4Completed: false,
+  step5Completed: false,
+  step6Completed: false,
+  assembledPubkey: '',
+  sha256Digest: '',
+  ripemd160Digest: '',
+  versionByte: '00',
+  versionedPayload: '',
+  csHash1: '',
+  csHash2: '',
+  checksum: '',
+  finalPayload: '',
+  finalAddress: '',
+  tools: {
+    shaMode: 'hex',
+    ripeMode: 'hex',
+    b58Mode: 'encode'
+  }
+};
+
+// Initialize Point to Address Game
+window.initAddressGame = function() {
+  // Update Coordinates Display
+  const xEl = document.getElementById('p2a-x-val');
+  const yEl = document.getElementById('p2a-y-val');
+  if (xEl) xEl.textContent = addressGameState.xHex.toUpperCase();
+  if (yEl) yEl.textContent = addressGameState.yHex.toUpperCase();
+
+  // Parity Analysis of Y
+  const parity = getYParity(addressGameState.yHex);
+  const parityBadge = document.getElementById('p2a-parity-badge');
+  const parityDetails = document.getElementById('p2a-parity-details');
+  const challengeYChar = document.getElementById('p2a-challenge-y-char');
+
+  if (parityBadge) {
+    parityBadge.className = `p2a-parity-badge ${parity.isEven ? 'even' : 'odd'}`;
+    parityBadge.textContent = parity.isEven ? 'Y is EVEN' : 'Y is ODD';
+  }
+
+  if (parityDetails) {
+    parityDetails.innerHTML = `Last hex digit of Y is <b>'${parity.lastDigit.toUpperCase()}'</b> (${parity.isEven ? 'even' : 'odd'}). Compressed prefix = <code>${parity.prefix}</code>.`;
+  }
+
+  if (challengeYChar) {
+    challengeYChar.textContent = parity.lastDigit.toUpperCase();
+  }
+
+  // Update Format Selection cards
+  const cardComp = document.getElementById('format-card-comp');
+  const cardUncomp = document.getElementById('format-card-uncomp');
+  const radioComp = document.getElementById('radio-comp');
+  const radioUncomp = document.getElementById('radio-uncomp');
+  const parityChallengeBox = document.getElementById('p2a-parity-challenge-box');
+
+  if (addressGameState.format === 'compressed') {
+    if (cardComp) cardComp.classList.add('selected');
+    if (cardUncomp) cardUncomp.classList.remove('selected');
+    if (radioComp) radioComp.checked = true;
+    if (parityChallengeBox) parityChallengeBox.style.display = 'flex';
+  } else {
+    if (cardUncomp) cardUncomp.classList.add('selected');
+    if (cardComp) cardComp.classList.remove('selected');
+    if (radioUncomp) radioUncomp.checked = true;
+    if (parityChallengeBox) parityChallengeBox.style.display = 'none';
+  }
+
+  // Assemble Step 1 Public Key
+  renderStep1Assembly();
+
+  // Highlight active step
+  window.jumpToAddressStep(addressGameState.currentStep || 1);
+};
+
+// Select Point Preset
+window.selectPointPreset = function(presetId) {
+  addressGameState.currentPresetId = presetId;
+
+  // Update Preset Button Active Styles
+  const presetButtons = document.querySelectorAll('.p2a-preset-btn');
+  presetButtons.forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById(`btn-preset-${presetId.replace('_', '-')}`) ||
+                    document.getElementById(`btn-preset-${presetId}`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  const customDrawer = document.getElementById('p2a-custom-drawer');
+
+  if (presetId === 'custom') {
+    if (customDrawer) customDrawer.style.display = 'block';
+    const inX = document.getElementById('p2a-input-custom-x');
+    const inY = document.getElementById('p2a-input-custom-y');
+    if (inX) inX.value = addressGameState.xHex;
+    if (inY) inY.value = addressGameState.yHex;
+    return;
+  } else {
+    if (customDrawer) customDrawer.style.display = 'none';
+  }
+
+  if (presetId === 'alice') {
+    if (state.alice && state.alice.keyPair) {
+      addressGameState.xHex = toHex32(state.alice.keyPair.publicPoint.x);
+      addressGameState.yHex = toHex32(state.alice.keyPair.publicPoint.y);
+    } else {
+      showAlert('Alice identity initializing...');
+      return;
+    }
+  } else if (presetId === 'bob') {
+    if (state.bob && state.bob.keyPair) {
+      addressGameState.xHex = toHex32(state.bob.keyPair.publicPoint.x);
+      addressGameState.yHex = toHex32(state.bob.keyPair.publicPoint.y);
+    } else {
+      showAlert('Bob identity initializing...');
+      return;
+    }
+  } else {
+    const preset = PREDEFINED_POINTS.find(p => p.id === presetId);
+    if (preset) {
+      addressGameState.xHex = preset.x;
+      addressGameState.yHex = preset.y;
+    }
+  }
+
+  // Reset steps state for new coordinates
+  window.resetAddressGame(false);
+  window.initAddressGame();
+  showAlert(`Loaded Point: ${presetId.replace('_', ' ').toUpperCase()}`);
+  sound.playClick();
+};
+
+// Apply Custom (X, Y) Coordinates
+window.applyCustomCoordinates = function() {
+  const inX = document.getElementById('p2a-input-custom-x');
+  const inY = document.getElementById('p2a-input-custom-y');
+  if (!inX || !inY) return;
+
+  const rawX = inX.value.trim().replace(/[^0-9a-fA-F]/g, '');
+  const rawY = inY.value.trim().replace(/[^0-9a-fA-F]/g, '');
+
+  if (rawX.length !== 64 || rawY.length !== 64) {
+    showAlert('Error: X and Y must each be 64 hexadecimal characters (32 bytes).');
+    return;
+  }
+
+  addressGameState.xHex = rawX;
+  addressGameState.yHex = rawY;
+
+  const customDrawer = document.getElementById('p2a-custom-drawer');
+  if (customDrawer) customDrawer.style.display = 'none';
+
+  window.resetAddressGame(false);
+  window.initAddressGame();
+  showAlert('Custom coordinates loaded successfully');
+  sound.playLock();
+};
+
+// Set Public Key Format (Compressed vs Uncompressed)
+window.setKeyFormat = function(format) {
+  addressGameState.format = format;
+  const parityChallengeBox = document.getElementById('p2a-parity-challenge-box');
+  const cardComp = document.getElementById('format-card-comp');
+  const cardUncomp = document.getElementById('format-card-uncomp');
+
+  if (format === 'compressed') {
+    if (cardComp) cardComp.classList.add('selected');
+    if (cardUncomp) cardUncomp.classList.remove('selected');
+    if (parityChallengeBox) parityChallengeBox.style.display = 'flex';
+  } else {
+    if (cardUncomp) cardUncomp.classList.add('selected');
+    if (cardComp) cardComp.classList.remove('selected');
+    if (parityChallengeBox) parityChallengeBox.style.display = 'none';
+  }
+
+  // Invalidate subsequent completed steps since format changed
+  addressGameState.step2Completed = false;
+  addressGameState.step3Completed = false;
+  addressGameState.step4Completed = false;
+  addressGameState.step5Completed = false;
+  addressGameState.step6Completed = false;
+
+  const navPills = document.querySelectorAll('.p2a-nav-pill');
+  navPills.forEach((p, idx) => {
+    if (idx > 0) p.classList.remove('completed');
+  });
+
+  const btnNext2 = document.getElementById('p2a-btn-next-step2');
+  const btnNext3 = document.getElementById('p2a-btn-next-step3');
+  const btnNext4 = document.getElementById('p2a-btn-next-step4');
+  const btnNext5 = document.getElementById('p2a-btn-next-step5');
+  if (btnNext2) btnNext2.disabled = true;
+  if (btnNext3) btnNext3.disabled = true;
+  if (btnNext4) btnNext4.disabled = true;
+  if (btnNext5) btnNext5.disabled = true;
+
+  renderStep1Assembly();
+  sound.playClick();
+};
+
+// Parity Prefix Guess
+window.handlePrefixGuess = function(guessedPrefix) {
+  const parity = getYParity(addressGameState.yHex);
+  const btn02 = document.getElementById('btn-prefix-02');
+  const btn03 = document.getElementById('btn-prefix-03');
+  const feedback = document.getElementById('p2a-prefix-feedback');
+
+  if (btn02) btn02.classList.remove('correct', 'incorrect');
+  if (btn03) btn03.classList.remove('correct', 'incorrect');
+
+  const chosenBtn = guessedPrefix === '02' ? btn02 : btn03;
+  const isCorrect = guessedPrefix === parity.prefix;
+
+  if (chosenBtn) {
+    chosenBtn.classList.add(isCorrect ? 'correct' : 'incorrect');
+  }
+
+  if (feedback) {
+    feedback.style.display = 'block';
+    feedback.className = `p2a-challenge-feedback ${isCorrect ? 'success' : 'error'}`;
+    if (isCorrect) {
+      feedback.innerHTML = `Correct! Y ends in '${parity.lastDigit.toUpperCase()}' (${parity.isEven ? 'even' : 'odd'}), so prefix <code>${parity.prefix}</code> is required.`;
+      sound.playLock();
+    } else {
+      feedback.innerHTML = `Incorrect. Y ends in '${parity.lastDigit.toUpperCase()}' (${parity.isEven ? 'even' : 'odd'}), so prefix <code>${parity.prefix}</code> must be used instead.`;
+      sound.playClick();
+    }
+  }
+};
+
+// Render Step 1 Public Key Assembly
+function renderStep1Assembly() {
+  const res = assemblePublicKey(addressGameState.xHex, addressGameState.yHex, addressGameState.format);
+  addressGameState.assembledPubkey = res.pubkey;
+
+  const displayEl = document.getElementById('p2a-assembled-pubkey');
+  const bytesBadge = document.getElementById('p2a-pubkey-bytes-badge');
+
+  if (bytesBadge) {
+    bytesBadge.textContent = `${res.byteLength} Bytes (${res.pubkey.length} hex)`;
+  }
+
+  if (displayEl) {
+    if (res.format === 'compressed') {
+      displayEl.innerHTML = `
+        <span class="hex-chip prefix" title="Parity Prefix (02=even, 03=odd)">${res.prefix}</span>
+        <span class="hex-chip x-coord" title="X Coordinate (32 bytes)">${res.x.toUpperCase()}</span>
+      `;
+    } else {
+      displayEl.innerHTML = `
+        <span class="hex-chip prefix" title="Uncompressed Prefix (04)">04</span>
+        <span class="hex-chip x-coord" title="X Coordinate (32 bytes)">${res.x.toUpperCase()}</span>
+        <span class="hex-chip y-coord" title="Y Coordinate (32 bytes)">${res.y.toUpperCase()}</span>
+      `;
+    }
+  }
+
+  // Pre-fill Step 2 input
+  const step2In = document.getElementById('p2a-step2-input');
+  if (step2In) step2In.value = res.pubkey.toUpperCase();
+}
+
+// Complete Step 1 and Advance
+window.completeStep1AndAdvance = function() {
+  addressGameState.step1Completed = true;
+  const pill1 = document.getElementById('p2a-nav-step-1');
+  if (pill1) pill1.classList.add('completed');
+
+  const step2In = document.getElementById('p2a-step2-input');
+  if (step2In) step2In.value = addressGameState.assembledPubkey.toUpperCase();
+
+  window.jumpToAddressStep(2);
+  sound.playClick();
+};
+
+// Step 2: SHA-256
+window.runStep2Sha256 = function() {
+  const inEl = document.getElementById('p2a-step2-input');
+  const val = inEl ? inEl.value.trim().toLowerCase() : addressGameState.assembledPubkey;
+
+  try {
+    const hashHex = sha256Hex(val);
+    addressGameState.sha256Digest = hashHex;
+
+    const outEl = document.getElementById('p2a-step2-output');
+    if (outEl) outEl.textContent = hashHex.toUpperCase();
+
+    const btnNext = document.getElementById('p2a-btn-next-step2');
+    if (btnNext) btnNext.disabled = false;
+
+    // Pre-fill Step 3 input
+    const step3In = document.getElementById('p2a-step3-input');
+    if (step3In) step3In.value = hashHex.toUpperCase();
+
+    sound.playLock();
+  } catch (err) {
+    showAlert('Error computing SHA-256: ' + err.message);
+  }
+};
+
+window.completeStep2AndAdvance = function() {
+  addressGameState.step2Completed = true;
+  const pill2 = document.getElementById('p2a-nav-step-2');
+  if (pill2) pill2.classList.add('completed');
+
+  const step3In = document.getElementById('p2a-step3-input');
+  if (step3In) step3In.value = addressGameState.sha256Digest.toUpperCase();
+
+  window.jumpToAddressStep(3);
+  sound.playClick();
+};
+
+// Step 3: RIPEMD-160 (PubKeyHash)
+window.runStep3Ripemd160 = function() {
+  const inEl = document.getElementById('p2a-step3-input');
+  const val = inEl ? inEl.value.trim().toLowerCase() : addressGameState.sha256Digest;
+
+  try {
+    const hashHex = ripemd160Hex(val);
+    addressGameState.ripemd160Digest = hashHex;
+
+    const outEl = document.getElementById('p2a-step3-output');
+    if (outEl) outEl.textContent = hashHex.toUpperCase();
+
+    const btnNext = document.getElementById('p2a-btn-next-step3');
+    if (btnNext) btnNext.disabled = false;
+
+    sound.playLock();
+  } catch (err) {
+    showAlert('Error computing RIPEMD-160: ' + err.message);
+  }
+};
+
+window.completeStep3AndAdvance = function() {
+  addressGameState.step3Completed = true;
+  const pill3 = document.getElementById('p2a-nav-step-3');
+  if (pill3) pill3.classList.add('completed');
+
+  window.jumpToAddressStep(4);
+  sound.playClick();
+};
+
+// Step 4: Network Version Byte 0x00
+window.runStep4AddVersion = function() {
+  if (!addressGameState.ripemd160Digest) {
+    showAlert('Please complete Step 3 (RIPEMD-160) first!');
+    return;
+  }
+
+  addressGameState.versionByte = '00';
+  addressGameState.versionedPayload = '00' + addressGameState.ripemd160Digest;
+
+  const outEl = document.getElementById('p2a-step4-output');
+  const rawEl = document.getElementById('p2a-step4-output-raw');
+
+  if (outEl) {
+    outEl.innerHTML = `
+      <span class="hex-chip version" title="Bitcoin Mainnet Version Byte (00)">00</span>
+      <span class="hex-chip hash160" title="PubKeyHash (20 bytes)">${addressGameState.ripemd160Digest.toUpperCase()}</span>
+    `;
+  }
+  if (rawEl) {
+    rawEl.textContent = addressGameState.versionedPayload.toUpperCase();
+  }
+
+  const btnNext = document.getElementById('p2a-btn-next-step4');
+  if (btnNext) btnNext.disabled = false;
+
+  sound.playLock();
+};
+
+window.completeStep4AndAdvance = function() {
+  addressGameState.step4Completed = true;
+  const pill4 = document.getElementById('p2a-nav-step-4');
+  if (pill4) pill4.classList.add('completed');
+
+  window.jumpToAddressStep(5);
+  sound.playClick();
+};
+
+// Step 5: Double SHA-256 Checksum
+window.runStep5Checksum = function() {
+  if (!addressGameState.versionedPayload) {
+    showAlert('Please complete Step 4 first!');
+    return;
+  }
+
+  try {
+    const payloadBytes = hexToBytes(addressGameState.versionedPayload);
+    const csHash1 = sha256Hex(payloadBytes);
+    const csHash2 = sha256Hex(hexToBytes(csHash1));
+    const checksum = csHash2.substring(0, 8);
+    const finalPayload = addressGameState.versionedPayload + checksum;
+
+    addressGameState.csHash1 = csHash1;
+    addressGameState.csHash2 = csHash2;
+    addressGameState.checksum = checksum;
+    addressGameState.finalPayload = finalPayload;
+
+    // Show breakdown
+    const breakdown = document.getElementById('p2a-checksum-breakdown');
+    const h1El = document.getElementById('p2a-cs-hash1');
+    const h2El = document.getElementById('p2a-cs-hash2');
+    const csExtractedEl = document.getElementById('p2a-cs-extracted');
+
+    if (breakdown) breakdown.style.display = 'flex';
+    if (h1El) h1El.textContent = csHash1.toUpperCase();
+    if (h2El) h2El.textContent = csHash2.toUpperCase();
+    if (csExtractedEl) csExtractedEl.textContent = checksum.toUpperCase();
+
+    // Show 25-byte payload
+    const outEl = document.getElementById('p2a-step5-output');
+    const rawEl = document.getElementById('p2a-step5-output-raw');
+
+    if (outEl) {
+      outEl.innerHTML = `
+        <span class="hex-chip version">00</span>
+        <span class="hex-chip hash160">${addressGameState.ripemd160Digest.toUpperCase()}</span>
+        <span class="hex-chip checksum" title="4-Byte Checksum">${checksum.toUpperCase()}</span>
+      `;
+    }
+    if (rawEl) {
+      rawEl.textContent = finalPayload.toUpperCase();
+    }
+
+    // Pre-fill Step 6 input
+    const step6In = document.getElementById('p2a-step6-input');
+    if (step6In) step6In.value = finalPayload.toUpperCase();
+
+    const btnNext = document.getElementById('p2a-btn-next-step5');
+    if (btnNext) btnNext.disabled = false;
+
+    sound.playLock();
+  } catch (err) {
+    showAlert('Error calculating checksum: ' + err.message);
+  }
+};
+
+window.completeStep5AndAdvance = function() {
+  addressGameState.step5Completed = true;
+  const pill5 = document.getElementById('p2a-nav-step-5');
+  if (pill5) pill5.classList.add('completed');
+
+  const step6In = document.getElementById('p2a-step6-input');
+  if (step6In) step6In.value = addressGameState.finalPayload.toUpperCase();
+
+  window.jumpToAddressStep(6);
+  sound.playClick();
+};
+
+// Step 6: Base58 Encoding
+window.runStep6Base58 = function() {
+  const inEl = document.getElementById('p2a-step6-input');
+  const val = inEl ? inEl.value.trim().toLowerCase() : addressGameState.finalPayload;
+
+  try {
+    const payloadBytes = hexToBytes(val);
+    const address = base58Encode(payloadBytes);
+    addressGameState.finalAddress = address;
+
+    // Show Address Banner
+    const addrCard = document.getElementById('p2a-final-address-card');
+    const addrVal = document.getElementById('p2a-final-address-val');
+    const formatTag = document.getElementById('p2a-meta-format-tag');
+
+    if (addrCard) addrCard.style.display = 'flex';
+    if (addrVal) addrVal.textContent = address;
+    if (formatTag) {
+      formatTag.textContent = addressGameState.format === 'compressed' ? 'Compressed Public Key' : 'Uncompressed Public Key';
+    }
+
+    // Show Victory Summary
+    const victoryCard = document.getElementById('p2a-victory-card');
+    const sumPoint = document.getElementById('p2a-sum-point');
+    const sumPubkey = document.getElementById('p2a-sum-pubkey');
+    const sumHash160 = document.getElementById('p2a-sum-hash160');
+    const sumAddress = document.getElementById('p2a-sum-address');
+
+    if (victoryCard) victoryCard.style.display = 'flex';
+    if (sumPoint) sumPoint.textContent = `(${addressGameState.xHex.slice(0, 10)}..., ${addressGameState.yHex.slice(0, 10)}...)`;
+    if (sumPubkey) sumPubkey.textContent = `${addressGameState.assembledPubkey.slice(0, 14)}... (${addressGameState.format})`;
+    if (sumHash160) sumHash160.textContent = addressGameState.ripemd160Digest.toUpperCase();
+    if (sumAddress) sumAddress.textContent = address;
+
+    addressGameState.step6Completed = true;
+    const pill6 = document.getElementById('p2a-nav-step-6');
+    if (pill6) pill6.classList.add('completed');
+
+    sound.playLock();
+    setTimeout(() => sound.playWhoosh(), 120);
+    showAlert('Bitcoin Address Derived Successfully!');
+  } catch (err) {
+    showAlert('Error encoding Base58: ' + err.message);
+  }
+};
+
+// Step Navigation Jump
+window.jumpToAddressStep = function(stepNum) {
+  addressGameState.currentStep = stepNum;
+
+  // Toggle Nav Pills Active
+  for (let i = 1; i <= 6; i++) {
+    const pill = document.getElementById(`p2a-nav-step-${i}`);
+    const card = document.getElementById(`p2a-card-step-${i}`);
+    if (pill) {
+      if (i === stepNum) pill.classList.add('active');
+      else pill.classList.remove('active');
+    }
+    if (card) {
+      if (i === stepNum) card.classList.add('active');
+      else card.classList.remove('active');
+    }
+  }
+
+  sound.playClick();
+};
+
+// Reset Game
+window.resetAddressGame = function(showToast = true) {
+  addressGameState.currentStep = 1;
+  addressGameState.step1Completed = false;
+  addressGameState.step2Completed = false;
+  addressGameState.step3Completed = false;
+  addressGameState.step4Completed = false;
+  addressGameState.step5Completed = false;
+  addressGameState.step6Completed = false;
+  addressGameState.assembledPubkey = '';
+  addressGameState.sha256Digest = '';
+  addressGameState.ripemd160Digest = '';
+  addressGameState.versionedPayload = '';
+  addressGameState.finalPayload = '';
+  addressGameState.finalAddress = '';
+
+  // Reset outputs in UI
+  const out2 = document.getElementById('p2a-step2-output');
+  const out3 = document.getElementById('p2a-step3-output');
+  const out4 = document.getElementById('p2a-step4-output');
+  const out5 = document.getElementById('p2a-step5-output');
+  const bd5 = document.getElementById('p2a-checksum-breakdown');
+  const addrCard = document.getElementById('p2a-final-address-card');
+  const victoryCard = document.getElementById('p2a-victory-card');
+
+  if (out2) out2.textContent = '(Click Compute SHA-256)';
+  if (out3) out3.textContent = '(Click Compute RIPEMD-160)';
+  if (out4) out4.textContent = '(Click Prepend Mainnet Byte)';
+  if (out5) out5.textContent = '(Click Calculate Checksum)';
+  if (bd5) bd5.style.display = 'none';
+  if (addrCard) addrCard.style.display = 'none';
+  if (victoryCard) victoryCard.style.display = 'none';
+
+  // Disable next buttons
+  const btnNext2 = document.getElementById('p2a-btn-next-step2');
+  const btnNext3 = document.getElementById('p2a-btn-next-step3');
+  const btnNext4 = document.getElementById('p2a-btn-next-step4');
+  const btnNext5 = document.getElementById('p2a-btn-next-step5');
+  if (btnNext2) btnNext2.disabled = true;
+  if (btnNext3) btnNext3.disabled = true;
+  if (btnNext4) btnNext4.disabled = true;
+  if (btnNext5) btnNext5.disabled = true;
+
+  // Clear completed on nav pills
+  for (let i = 1; i <= 6; i++) {
+    const pill = document.getElementById(`p2a-nav-step-${i}`);
+    if (pill) pill.classList.remove('completed');
+  }
+
+  // Clear challenge buttons
+  const btn02 = document.getElementById('btn-prefix-02');
+  const btn03 = document.getElementById('btn-prefix-03');
+  const feedback = document.getElementById('p2a-prefix-feedback');
+  if (btn02) btn02.classList.remove('correct', 'incorrect');
+  if (btn03) btn03.classList.remove('correct', 'incorrect');
+  if (feedback) feedback.style.display = 'none';
+
+  window.jumpToAddressStep(1);
+  renderStep1Assembly();
+
+  if (showToast) {
+    showAlert('Game Reset to Step 1');
+    sound.playClick();
+  }
+};
+
+// Solve All Steps
+window.solveAllAddressSteps = function() {
+  renderStep1Assembly();
+  window.completeStep1AndAdvance();
+  window.runStep2Sha256();
+  window.completeStep2AndAdvance();
+  window.runStep3Ripemd160();
+  window.completeStep3AndAdvance();
+  window.runStep4AddVersion();
+  window.completeStep4AndAdvance();
+  window.runStep5Checksum();
+  window.completeStep5AndAdvance();
+  window.runStep6Base58();
+
+  showAlert('All 6 Cryptographic Steps Solved!');
+};
+
+// Copy Text Helper by Element ID
+window.copyTextById = function(elemId) {
+  const el = document.getElementById(elemId);
+  if (!el) return;
+  const val = (el.value !== undefined ? el.value : el.textContent).trim();
+  window.copyText(val, 'Value');
+};
+
+// ==========================================================================
+// Standalone Cryptographic Toolbox
+// ==========================================================================
+
+window.setToolMode = function(tool, mode) {
+  addressGameState.tools[`${tool}Mode`] = mode;
+
+  if (tool === 'sha') {
+    const btnHex = document.getElementById('tool-sha-mode-hex');
+    const btnText = document.getElementById('tool-sha-mode-text');
+    const inArea = document.getElementById('tool-sha-input');
+    if (mode === 'hex') {
+      if (btnHex) btnHex.classList.add('active');
+      if (btnText) btnText.classList.remove('active');
+      if (inArea) inArea.placeholder = 'Enter hexadecimal string to hash...';
+    } else {
+      if (btnText) btnText.classList.add('active');
+      if (btnHex) btnHex.classList.remove('active');
+      if (inArea) inArea.placeholder = 'Enter plain text to hash...';
+    }
+  } else if (tool === 'ripe') {
+    const btnHex = document.getElementById('tool-ripe-mode-hex');
+    const btnText = document.getElementById('tool-ripe-mode-text');
+    const inArea = document.getElementById('tool-ripe-input');
+    if (mode === 'hex') {
+      if (btnHex) btnHex.classList.add('active');
+      if (btnText) btnText.classList.remove('active');
+      if (inArea) inArea.placeholder = 'Enter hexadecimal string to hash...';
+    } else {
+      if (btnText) btnText.classList.add('active');
+      if (btnHex) btnHex.classList.remove('active');
+      if (inArea) inArea.placeholder = 'Enter plain text to hash...';
+    }
+  } else if (tool === 'b58') {
+    const btnEnc = document.getElementById('tool-b58-mode-enc');
+    const btnDec = document.getElementById('tool-b58-mode-dec');
+    const inArea = document.getElementById('tool-b58-input');
+    const actionBtn = document.getElementById('tool-b58-btn');
+    const outLabel = document.getElementById('tool-b58-output-label');
+    if (mode === 'encode') {
+      if (btnEnc) btnEnc.classList.add('active');
+      if (btnDec) btnDec.classList.remove('active');
+      if (inArea) inArea.placeholder = 'Enter hex payload to encode to Base58...';
+      if (actionBtn) actionBtn.querySelector('span').textContent = 'Encode to Base58';
+      if (outLabel) outLabel.textContent = 'Base58 Result:';
+    } else {
+      if (btnDec) btnDec.classList.add('active');
+      if (btnEnc) btnEnc.classList.remove('active');
+      if (inArea) inArea.placeholder = 'Enter Base58 string (e.g. 16UwLL9...) to decode...';
+      if (actionBtn) actionBtn.querySelector('span').textContent = 'Decode from Base58';
+      if (outLabel) outLabel.textContent = 'Decoded Hex:';
+    }
+  }
+
+  sound.playClick();
+};
+
+window.runStandaloneSha256 = function() {
+  const inArea = document.getElementById('tool-sha-input');
+  const outVal = document.getElementById('tool-sha-output');
+  if (!inArea || !outVal) return;
+
+  const val = inArea.value.trim();
+  if (!val) {
+    showAlert('Please enter input for SHA-256');
+    return;
+  }
+
+  try {
+    let inputBytes;
+    if (addressGameState.tools.shaMode === 'hex') {
+      inputBytes = hexToBytes(val);
+    } else {
+      inputBytes = utf8ToBytes(val);
+    }
+    const hash = sha256Hex(inputBytes);
+    outVal.textContent = hash.toUpperCase();
+    sound.playLock();
+  } catch (err) {
+    outVal.textContent = 'Error: ' + err.message;
+    showAlert('Error: ' + err.message);
+  }
+};
+
+window.runStandaloneRipemd160 = function() {
+  const inArea = document.getElementById('tool-ripe-input');
+  const outVal = document.getElementById('tool-ripe-output');
+  if (!inArea || !outVal) return;
+
+  const val = inArea.value.trim();
+  if (!val) {
+    showAlert('Please enter input for RIPEMD-160');
+    return;
+  }
+
+  try {
+    let inputBytes;
+    if (addressGameState.tools.ripeMode === 'hex') {
+      inputBytes = hexToBytes(val);
+    } else {
+      inputBytes = utf8ToBytes(val);
+    }
+    const hash = ripemd160Hex(inputBytes);
+    outVal.textContent = hash.toUpperCase();
+    sound.playLock();
+  } catch (err) {
+    outVal.textContent = 'Error: ' + err.message;
+    showAlert('Error: ' + err.message);
+  }
+};
+
+window.runStandaloneBase58 = function() {
+  const inArea = document.getElementById('tool-b58-input');
+  const outVal = document.getElementById('tool-b58-output');
+  if (!inArea || !outVal) return;
+
+  const val = inArea.value.trim();
+  if (!val) {
+    showAlert('Please enter input for Base58 tool');
+    return;
+  }
+
+  try {
+    if (addressGameState.tools.b58Mode === 'encode') {
+      const bytes = hexToBytes(val);
+      const encoded = base58Encode(bytes);
+      outVal.textContent = encoded;
+      sound.playLock();
+    } else {
+      // Decode
+      const bytes = base58Decode(val);
+      const hex = bytesToHex(bytes);
+
+      // Verify checksum if 25 bytes (standard Bitcoin address payload)
+      let checksumNote = '';
+      if (bytes.length === 25) {
+        const payload = bytes.slice(0, 21);
+        const expectedCs = bytesToHex(bytes.slice(21, 25));
+        const actualCs = computeChecksum(bytesToHex(payload));
+        if (expectedCs === actualCs) {
+          checksumNote = ' [Valid Address Checksum ✓]';
+        } else {
+          checksumNote = ' [Checksum Mismatch ✗]';
+        }
+      }
+
+      outVal.textContent = hex.toUpperCase() + checksumNote;
+      sound.playLock();
+    }
+  } catch (err) {
+    outVal.textContent = 'Error: ' + err.message;
+    showAlert('Error: ' + err.message);
+  }
+};
+
 

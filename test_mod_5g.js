@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+import puppeteer from 'puppeteer';
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -34,14 +34,14 @@ const puppeteer = require('puppeteer');
     throw new Error(`Expected header 'Bitpolito Cryptography Simulator', got '${headerH1}'`);
   }
 
-  // 2. Verify Single Header Action: Cryptography Guide button exists, and no Simulator button in header
+  // 2. Verify Header Tabs: Cryptography Guide and Point to Address tabs exist
   const headerBtns = await page.$$eval('.header-actions button', btns => btns.map(b => b.textContent.trim()));
   console.log('Header Action Buttons:', headerBtns);
   if (!headerBtns.includes('Cryptography Guide')) {
     throw new Error('Cryptography Guide button missing from header');
   }
-  if (headerBtns.some(b => b.includes('Simulator') || b.includes('2D Curve Graph'))) {
-    throw new Error('Duplicate Simulator / Curve Graph button still in header');
+  if (!headerBtns.includes('Point to Address')) {
+    throw new Error('Point to Address tab button missing from header');
   }
 
   await page.screenshot({ path: 'preview_bitpolito_home.png', fullPage: false });
