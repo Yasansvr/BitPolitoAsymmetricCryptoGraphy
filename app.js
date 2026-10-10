@@ -29,6 +29,10 @@ import {
   bytesToHex,
   utf8ToBytes
 } from './address.js';
+import {
+  initMerkleSimulator,
+  drawMerkleConnectors
+} from './merkle.js';
 
 // Application State
 const state = {
@@ -813,25 +817,29 @@ window.toggleSound = function() {
 
 let graphEngine = null;
 
-// Switch between Simulator View, Desmos 2D Graph Guide View, and Point to Address View
+// Switch between Simulator View, Desmos 2D Graph Guide View, Point to Address View, and Merkle Tree Simulator
 window.switchView = function(viewName) {
   const simView = document.getElementById('view-simulator');
   const graphView = document.getElementById('view-graph');
   const addressView = document.getElementById('view-point-address');
+  const merkleView = document.getElementById('view-merkle');
 
   const tabSim = document.getElementById('tab-nav-sim');
   const tabGuide = document.getElementById('nav-guide-btn');
   const tabAddress = document.getElementById('tab-nav-address');
+  const tabMerkle = document.getElementById('tab-nav-merkle');
 
   // Hide all views first
   if (simView) simView.style.display = 'none';
   if (graphView) graphView.style.display = 'none';
   if (addressView) addressView.style.display = 'none';
+  if (merkleView) merkleView.style.display = 'none';
 
   // Clear active tab button styling
   if (tabSim) tabSim.classList.remove('active');
   if (tabGuide) tabGuide.classList.remove('active');
   if (tabAddress) tabAddress.classList.remove('active');
+  if (tabMerkle) tabMerkle.classList.remove('active');
 
   if (viewName === 'graph') {
     if (graphView) graphView.style.display = 'flex';
@@ -855,6 +863,18 @@ window.switchView = function(viewName) {
       graphEngine.stopPlay();
     }
     initAddressGame();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    sound.playClick();
+  } else if (viewName === 'merkle') {
+    if (merkleView) merkleView.style.display = 'flex';
+    if (tabMerkle) tabMerkle.classList.add('active');
+    if (graphEngine && graphEngine.isPlaying) {
+      graphEngine.stopPlay();
+    }
+    initMerkleSimulator();
+    setTimeout(() => {
+      drawMerkleConnectors();
+    }, 60);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     sound.playClick();
   } else {
@@ -1261,12 +1281,19 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     updateConnectorLine();
     if (graphEngine) graphEngine.resize();
+    drawMerkleConnectors();
   });
 
   // Initialize Point to Address Game if element exists
   const addrStage = document.getElementById('view-point-address');
   if (addrStage) {
     initAddressGame();
+  }
+
+  // Initialize Merkle Simulator if element exists
+  const merkleStage = document.getElementById('view-merkle');
+  if (merkleStage) {
+    initMerkleSimulator();
   }
 });
 

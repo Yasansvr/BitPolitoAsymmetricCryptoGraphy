@@ -84,6 +84,9 @@
         <button class="photo2-pill-btn small nav-tab-btn" id="tab-nav-address" onclick="switchView('address')">
           <span>Point to Address</span>
         </button>
+        <button class="photo2-pill-btn small nav-tab-btn" id="tab-nav-merkle" onclick="switchView('merkle')">
+          <span>Merkle Tree</span>
+        </button>
       </nav>
       <button id="sound-toggle-btn" class="photo2-pill-btn small" onclick="toggleSound()">
         Sound: ON
@@ -1208,6 +1211,192 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Main View 4: Merkle Tree Simulator Stage -->
+  <section class="merkle-stage" id="view-merkle" style="display:none;">
+
+    <!-- Top Header & Mode Navigation -->
+    <div class="merkle-stage-header">
+      <div class="merkle-header-left">
+        <div class="pill-badge">
+          <span class="dot"></span>
+          <span>Blockchain Data Structure</span>
+        </div>
+        <h2 class="merkle-title">Merkle Tree Simulator</h2>
+        <p class="merkle-subtitle">
+          Interactive binary hash tree: step-by-step hashing, avalanche tamper detection, and SPV proof auditing.
+        </p>
+      </div>
+
+      <!-- Mode Selector Pills -->
+      <div class="merkle-mode-pills">
+        <button class="photo2-pill-btn small active" id="merkle-mode-builder" onclick="setMerkleMode('builder')">
+          <span>Tree Builder</span>
+        </button>
+        <button class="photo2-pill-btn small" id="merkle-mode-tamper" onclick="setMerkleMode('tamper')">
+          <span>Avalanche Attack</span>
+        </button>
+        <button class="photo2-pill-btn small" id="merkle-mode-spv" onclick="setMerkleMode('spv')">
+          <span>SPV Proof Quiz</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Section 1: Block Header & Merkle Root Status Banner -->
+    <div class="photo2-card merkle-card" id="merkle-header-status-card">
+      <div class="merkle-block-header-row">
+        <div class="merkle-block-meta">
+          <div class="merkle-block-tag">BLOCK #840,000</div>
+          <div class="merkle-block-meta-details">
+            <span>Prev: <code>000000...a4f2</code></span> •
+            <span>Nonce: <code>2083236893</code></span>
+          </div>
+        </div>
+
+        <div class="merkle-root-display-group">
+          <span class="merkle-root-label">BLOCK HEADER MERKLE ROOT:</span>
+          <div class="merkle-root-hash-badge">
+            <code id="merkle-root-compact">8876...d9bd</code>
+            <span id="merkle-root-full" style="display:none;">8876ddfb245f0dd2b82d29dea8887a71436fbfff2b3bb6501b48f32d1e11d9bd</span>
+            <button class="p2a-copy-icon-btn small" onclick="copyMerkleHash(merkleState.currentRoot)" title="Copy Merkle Root">
+              📋
+            </button>
+          </div>
+        </div>
+
+        <div id="merkle-status-badge" class="merkle-status-badge valid">
+          <span class="status-dot"></span>
+          VALID BLOCK HEADER (Merkle Root Matches)
+        </div>
+      </div>
+
+      <!-- Tamper Comparison Drawer -->
+      <div class="merkle-tamper-comparison" id="merkle-tamper-comparison" style="display:none;">
+        <div class="merkle-tamper-comparison-content">
+          <div class="merkle-comp-col">
+            <span class="merkle-comp-title">Original Consensus Root:</span>
+            <code class="merkle-comp-hash original" id="merkle-stored-root-val">8876ddfb245f0dd2b82d29dea8887a71436fbfff2b3bb6501b48f32d1e11d9bd</code>
+          </div>
+          <div class="merkle-comp-col">
+            <span class="merkle-comp-title">Current Computed Root:</span>
+            <code class="merkle-comp-hash computed" id="merkle-computed-root-val">8876ddfb245f0dd2b82d29dea8887a71436fbfff2b3bb6501b48f32d1e11d9bd</code>
+          </div>
+        </div>
+        <button class="photo2-pill-btn primary small" onclick="restoreMerkleOriginal()">
+          <span>Restore Original Transactions</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Section 2: Visual Tree Diagram Canvas -->
+    <div class="photo2-card merkle-card" id="merkle-tree-canvas-card">
+      <div class="merkle-card-header">
+        <div class="address-step-tag">Binary Tree Visualizer</div>
+        <div class="merkle-card-header-main">
+          <h3 class="address-card-title">Interactive Merkle Hash Tree</h3>
+          <p class="address-card-desc">
+            Pairwise SHA-256 hashes merge upwards into a single 32-byte Merkle Root. Hover over any node to view the full 64-character hash.
+          </p>
+        </div>
+
+        <!-- Step Next / Build Controls -->
+        <div class="merkle-builder-controls" id="merkle-builder-controls">
+          <button class="photo2-pill-btn small" onclick="merkleResetSteps()">
+            <span>Reset (Leaves)</span>
+          </button>
+          <button class="photo2-pill-btn primary small" onclick="merkleStepNext()">
+            <span>Step Next Level ➔</span>
+          </button>
+          <button class="photo2-pill-btn small" onclick="merkleBuildFull()">
+            <span>Full Tree</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tree Container with dynamic SVG connectors -->
+      <div class="merkle-tree-wrapper" id="merkle-tree-wrapper">
+        <svg id="merkle-svg-canvas" class="merkle-connector-svg"></svg>
+        <div id="merkle-tree-nodes-container" class="merkle-tree-nodes-container">
+          <!-- Dynamically populated hierarchical tree rows -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Transactions Manager (Leaf Level 0) -->
+    <div class="photo2-card merkle-card" id="merkle-tx-manager-card">
+      <div class="merkle-card-header">
+        <div class="address-step-tag">Leaf Transactions</div>
+        <div class="merkle-card-header-main">
+          <h3 class="address-card-title">Block Transactions (Level 0 Leaves)</h3>
+          <p class="address-card-desc">
+            Edit any transaction text to see the real-time <b>Avalanche Effect</b> scramble all parent hashes up to the block header.
+          </p>
+          <span class="merkle-odd-notice" id="merkle-odd-notice" style="display:none;"></span>
+        </div>
+
+        <div class="merkle-tx-actions">
+          <button class="photo2-pill-btn small" onclick="addMerkleTx()">
+            <span>+ Add Tx</span>
+          </button>
+          <button class="photo2-pill-btn small" onclick="removeMerkleTx()">
+            <span>- Remove</span>
+          </button>
+          <button class="photo2-pill-btn small" onclick="resetMerkleTransactions()">
+            <span>Reset</span>
+          </button>
+          <button class="photo2-pill-btn primary small" onclick="tamperExampleTx(2)">
+            <span>Attack Demo: Tamper Tx 2</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Transactions Grid List -->
+      <div class="merkle-tx-list" id="merkle-tx-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Section 4: SPV Proof Audit Mini-Challenge -->
+    <div class="photo2-card merkle-card" id="merkle-spv-card" style="display:none;">
+      <div class="merkle-card-header">
+        <div class="address-step-tag">Light Client Audit</div>
+        <div class="merkle-card-header-main">
+          <h3 class="address-card-title">SPV Proof Mini-Challenge (Simplified Payment Verification)</h3>
+          <p class="address-card-desc">
+            Verify transaction inclusion without downloading the whole block by hashing only the minimum sibling audit path.
+          </p>
+        </div>
+
+        <!-- Target Selector -->
+        <div class="merkle-spv-target-row">
+          <label for="merkle-spv-target-select"><b>Verify Target:</b></label>
+          <select id="merkle-spv-target-select" class="merkle-select" onchange="setSpvTarget(this.value)">
+            <!-- Options populated dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <div class="merkle-spv-content">
+        <!-- Efficiency banner -->
+        <div class="merkle-spv-stat-banner" id="merkle-spv-stat-banner"></div>
+
+        <!-- Step-by-Step Proof Stepper -->
+        <div class="merkle-spv-steps-container" id="merkle-spv-steps-container">
+          <!-- Dynamically populated SPV proof steps -->
+        </div>
+
+        <div class="merkle-spv-footer-actions">
+          <button class="photo2-pill-btn primary small" onclick="nextSpvStep()">
+            <span>Next Audit Step ➔</span>
+          </button>
+          <button class="photo2-pill-btn small" onclick="resetSpvStep()">
+            <span>Reset Proof</span>
+          </button>
+        </div>
       </div>
     </div>
 
